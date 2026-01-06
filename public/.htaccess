@@ -1,0 +1,32 @@
+ErrorDocument 404 /index.php
+ErrorDocument 403 /index.php
+
+# Enable rewriting
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect www to non-www
+    RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+    RewriteRule ^(.*)$ http://%1/$1 [R=301,L]
+    
+    # Allow direct access to PHP files
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Redirect all requests to index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# PHP Settings
+<IfModule mod_php.c>
+    php_value session.gc_maxlifetime 7200
+    php_value session.cookie_lifetime 0
+    php_flag session.cookie_httponly on
+</IfModule>
