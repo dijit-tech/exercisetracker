@@ -1,0 +1,24 @@
+<?php
+/**
+ * Production Database Configuration
+ * This file contains the production database credentials
+ */
+
+define('DB_HOST', 'anandlonkar.ipagemysql.com');
+define('DB_NAME', 'goaltracker_prod');
+define('DB_USER', 'goaltracker_user');
+define('DB_PASS', 'Just4Goals!');
+define('DB_PORT', '3306');
+define('DB_CHARSET', 'utf8mb4');
+
+// Environment
+define('APP_ENV', 'production');
+define('DEBUG', false);
+
+// Session configuration
+define('SESSION_SAVE_PATH', __DIR__ . '/../sessions');
+
+// Ensure sessions directory exists
+if (!file_exists(SESSION_SAVE_PATH)) {
+    mkdir(SESSION_SAVE_PATH, 0755, true);
+}
