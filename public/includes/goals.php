@@ -456,33 +456,18 @@ function getGoalStats($userId) {
     $today = date('Y-m-d');
     
     // Total active goals
-    $stmt = $db->prepare("
-        SELECT COUNT(*) as total FROM goals 
-        WHERE user_id = ? AND status = 'active'
-    ");
+    $stmt = $db->prepare("SELECT COUNT(*) as total FROM goals WHERE user_id = ? AND status = 'active'");
     $stmt->execute([$userId]);
     $totalActive = (int)$stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     // Completed today
-    $stmt = $db->prepare("
-        SELECT COUNT(*) as completed 
-        FROM goal_logs gl
-        JOIN goals g ON gl.goal_id = g.id
-        WHERE gl.user_id = ? AND gl.log_date = ? AND gl.completed = TRUE AND g.status = 'active'
-    ");
+    $stmt = $db->prepare("SELECT COUNT(*) as completed FROM goal_logs gl JOIN goals g ON gl.goal_id = g.id WHERE gl.user_id = ? AND gl.log_date = ? AND gl.completed = TRUE AND g.status = 'active'");
     $stmt->execute([$userId, $today]);
     $completedToday = (int)$stmt->fetch(PDO::FETCH_ASSOC)['completed'];
     
     // Success rate (last 7 days)
     $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
-    $stmt = $db->prepare("
-        SELECT 
-            COUNT(DISTINCT DATE(log_date)) as days_with_activity,
-            SUM(CASE WHEN completed = TRUE THEN 1 ELSE 0 END) as total_completions
-        FROM goal_logs gl
-        JOIN goals g ON gl.goal_id = g.id
-        WHERE gl.user_id = ? AND gl.log_date BETWEEN ? AND ? AND g.status = 'active'
-    ");
+    $stmt = $db->prepare("SELECT COUNT(DISTINCT DATE(log_date)) as days_with_activity, SUM(CASE WHEN completed = TRUE THEN 1 ELSE 0 END) as total_completions FROM goal_logs gl JOIN goals g ON gl.goal_id = g.id WHERE gl.user_id = ? AND gl.log_date BETWEEN ? AND ? AND g.status = 'active'");
     $stmt->execute([$userId, $sevenDaysAgo, $today]);
     $weekStats = $stmt->fetch(PDO::FETCH_ASSOC);
     

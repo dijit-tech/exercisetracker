@@ -2,6 +2,9 @@
 /**
  * Track Today Page - Quick logging for all active goals
  */
+ini_set('display_errors', '0');
+ini_set('display_startup_errors', '0');
+error_reporting(0);
 
 require_once __DIR__ . '/includes/session.php';
 require_once __DIR__ . '/includes/goals.php';
@@ -100,6 +103,9 @@ $success = $_GET['success'] ?? '';
                     </li>
                     <li class="nav-item">
                         <a class="nav-link active" href="/track_today.php">Track Today</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/rooms.php">Rooms</a>
                     </li>
                     <?php if ($isAdmin): ?>
                     <li class="nav-item">

@@ -18,11 +18,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// Parse JSON input
+$input = json_decode(file_get_contents('php://input'), true);
+if ($input === null) {
+    $input = $_POST;
+}
+
 $userId = $_SESSION['user_id'];
-$title = trim($_POST['title'] ?? '');
-$category = trim($_POST['category'] ?? '');
-$startDate = $_POST['start_date'] ?? date('Y-m-d');
-$endDate = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
+$title = trim($input['title'] ?? $input['goal_title'] ?? '');
+$category = trim($input['category'] ?? $input['goal_category'] ?? '');
+$startDate = $input['start_date'] ?? date('Y-m-d');
+$endDate = !empty($input['end_date']) ? $input['end_date'] : null;
 
 // Validation
 if (empty($title)) {
