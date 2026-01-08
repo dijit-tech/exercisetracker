@@ -3,7 +3,18 @@
  * Database Connection
  */
 
-require_once __DIR__ . '/../../config/database.php';
+// Load appropriate config based on environment
+// Check for dev config first (for local development)
+$devConfig = __DIR__ . '/../../config/database_dev.php';
+$prodConfig = __DIR__ . '/../../config/database.php';
+
+if (file_exists($devConfig)) {
+    require_once $devConfig;
+} elseif (file_exists($prodConfig)) {
+    require_once $prodConfig;
+} else {
+    die("Database configuration file not found!");
+}
 
 function getDbConnection() {
     static $pdo = null;

@@ -4,7 +4,17 @@
  * CRITICAL: This must be rock-solid as previous version had session persistence bugs
  */
 
-require_once __DIR__ . '/../../config/database.php';
+// Load config using same logic as db.php
+$devConfig = __DIR__ . '/../../config/database_dev.php';
+$prodConfig = __DIR__ . '/../../config/database.php';
+
+if (!defined('DB_HOST')) {
+    if (file_exists($devConfig)) {
+        require_once $devConfig;
+    } elseif (file_exists($prodConfig)) {
+        require_once $prodConfig;
+    }
+}
 
 /**
  * Start session with secure settings
