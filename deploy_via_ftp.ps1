@@ -8,8 +8,8 @@ param(
 $ftpServer = "ftp://ftp.lonkar.in"
 $ftpUsername = "dijittechadmin"
 $ftpPassword = "Just4DijitTechApps!"
-$ftpBasePath = "/apps/exercisetracker"
-$localPath = "c:\code\exercisetracker_fresh_20260105"
+$ftpBasePath = "/apps/goaltracker"
+$localPath = "c:\code\goaltracker"
 
 function Upload-File {
     param(

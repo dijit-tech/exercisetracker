@@ -8,15 +8,21 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-BASE_URL = "http://localhost:8000"
+# Production URL
+BASE_URL = "http://goaltracker.dijit.tech"
 
 # Test credentials
 ADMIN_USER = {"username": "admin", "password": "password"}
 TEST_USER = {"username": "testuser", "password": "password"}
 
 # Session objects to maintain cookies
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
 admin_session = requests.Session()
+admin_session.headers.update(headers)
 test_session = requests.Session()
+test_session.headers.update(headers)
 
 def print_test_header(test_name):
     print(f"\n{'='*70}")
@@ -24,18 +30,40 @@ def print_test_header(test_name):
     print(f"{'='*70}")
 
 def print_success(message):
-    print(f"✓ {message}")
+    print(f"[OK] {message}")
 
 def print_error(message):
-    print(f"✗ {message}")
+    print(f"[X] {message}")
 
 def login_user(session, username, password):
     """Login and return success status"""
-    response = session.post(
-        f"{BASE_URL}/api/login.php",
-        data={"username": username, "password": password}
-    )
-    return response.status_code in [200, 302]
+    url = f"{BASE_URL}/api/login.php"
+    try:
+        response = session.post(
+            url,
+            data={"username": username, "password": password}
+        )
+        if response.status_code not in [200, 302]:
+            print(f"[X] Login failed at {url}. Status: {response.status_code}")
+            return False
+            
+        # Check if we were redirected to login page (failure)
+        # Note: 'login' check matches api/login.php so we must be careful.
+        # If we are strictly at api/login.php, it implies NO REDIRECT happened (failure or error).
+        if "index.php" in response.url or "error=" in response.url:
+             print(f"[X] Login redirected to {response.url} (Failed)")
+             return False
+             
+        if "login.php" in response.url:
+             # If we are still at login.php, we didn't redirect to dashboard.
+             # This usually means an error occurred on the page.
+             print(f"[X] Login stayed at {response.url} (Failed). Content start: {response.text[:500]}")
+             return False
+            
+        return True
+    except Exception as e:
+        print(f"[X] Login exception: {e}")
+        return False
 
 def create_goal(session, title, category="Health & Fitness"):
     """Create a goal and return goal ID"""

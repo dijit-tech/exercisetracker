@@ -150,11 +150,24 @@ $pageTitle = "My Rooms";
                                 <i class="bi bi-bullseye"></i> <?php echo $room['my_goals_count']; ?> goals
                             </span>
                         </div>
-                        <?php if ($room['creator_user_id'] == $userId): ?>
-                        <div class="mt-2">
-                            <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Creator</span>
+                        <div class="mt-2 d-flex justify-content-between">
+                            <?php if ($room['creator_user_id'] == $userId): ?>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Creator</span>
+                            <?php else: ?>
+                                <span></span>
+                            <?php endif; ?>
+                            
+                            <?php if ($isAdmin || $room['creator_user_id'] == $userId): ?>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editRoom(<?php echo $room['id']; ?>)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteRoom(<?php echo $room['id']; ?>)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -180,6 +193,24 @@ $pageTitle = "My Rooms";
                                 <i class="bi bi-people"></i> <?php echo $room['member_count']; ?> members
                             </span>
                         </div>
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <?php if ($room['creator_user_id'] == $userId): ?>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Creator</span>
+                            <?php else: ?>
+                                <span></span>
+                            <?php endif; ?>
+                            
+                            <?php if ($isAdmin || $room['creator_user_id'] == $userId): ?>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editRoom(<?php echo $room['id']; ?>)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteRoom(<?php echo $room['id']; ?>)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -200,6 +231,24 @@ $pageTitle = "My Rooms";
                         <p class="card-text text-muted small">
                             <?php echo htmlspecialchars(substr($room['description'], 0, 100)); ?>
                         </p>
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <?php if ($room['creator_user_id'] == $userId): ?>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> Creator</span>
+                            <?php else: ?>
+                                <span></span>
+                            <?php endif; ?>
+                            
+                            <?php if ($isAdmin || $room['creator_user_id'] == $userId): ?>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); editRoom(<?php echo $room['id']; ?>)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteRoom(<?php echo $room['id']; ?>)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -269,6 +318,43 @@ $pageTitle = "My Rooms";
         </div>
     </div>
 
+    <!-- Edit Room Modal -->
+    <div class="modal fade" id="editRoomModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Room</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editRoomForm">
+                    <input type="hidden" id="editRoomId" name="room_id">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="editRoomName" class="form-label">Room Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editRoomName" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editRoomDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editRoomDescription" name="description" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editRoomEndDate" class="form-label">End Date (Optional)</label>
+                            <input type="date" class="form-control" id="editRoomEndDate" name="end_date">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Create room form submission
@@ -295,6 +381,96 @@ $pageTitle = "My Rooms";
                 alert('Error creating room: ' + error.message);
             }
         });
+
+        // Edit Room Modal & Logic
+        const editRoomModal = new bootstrap.Modal(document.getElementById('editRoomModal'));
+        
+        async function editRoom(roomId) {
+            try {
+                // Fetch room details
+                const response = await fetch(`api/get_room.php?id=${roomId}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    alert('Error loading room details: ' + (data.error || 'Unknown error'));
+                    return;
+                }
+                
+                const room = data.room;
+                
+                // Populate form
+                document.getElementById('editRoomId').value = room.id;
+                document.getElementById('editRoomName').value = room.name;
+                document.getElementById('editRoomDescription').value = room.description || '';
+                document.getElementById('editRoomEndDate').value = room.end_date ? room.end_date.substring(0, 10) : '';
+                
+                // Show modal
+                editRoomModal.show();
+                
+            } catch (error) {
+                alert('Error fetching room details: ' + error.message);
+            }
+        }
+
+        document.getElementById('editRoomForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Use URLSearchParams for form data encoding to handle special characters better if needed, 
+            // but JSON is cleaner if the endpoint supports it.
+            // update_room.php supports JSON input: $input = json_decode(file_get_contents('php://input'), true);
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('api/update_room.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Room updated successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error updating room: ' + error.message);
+            }
+        });
+
+        // Delete Room Logic
+        async function deleteRoom(roomId) {
+            if (!confirm('Are you sure you want to delete this room? This cannot be undone.')) {
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('room_id', roomId);
+            
+            try {
+                const response = await fetch('api/delete_room.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Room deleted successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error deleting room: ' + error.message);
+            }
+        }
         
         // Respond to invitation
         async function respondToInvite(inviteId, response) {

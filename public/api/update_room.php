@@ -32,8 +32,9 @@ if (!$roomId) {
     exit;
 }
 
-if (!isRoomCreator($roomId, $userId)) {
-    echo json_encode(['success' => false, 'error' => 'Only room creator can edit']);
+// Allow update if room creator OR admin
+if (!isRoomCreator($roomId, $userId) && !isAdmin()) {
+    echo json_encode(['success' => false, 'error' => 'Only room creator or admin can edit']);
     exit;
 }
 

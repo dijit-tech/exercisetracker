@@ -4,16 +4,33 @@
  */
 
 // Load appropriate config based on environment
+// Check for local config first (deployed in same directory)
+$localConfig = __DIR__ . '/config.php';
 // Check for dev config first (for local development)
 $devConfig = __DIR__ . '/../../config/database_dev.php';
 $prodConfig = __DIR__ . '/../../config/database.php';
 
-if (file_exists($devConfig)) {
+if (file_exists($localConfig)) {
+    require_once $localConfig;
+} elseif (file_exists($devConfig)) {
     require_once $devConfig;
 } elseif (file_exists($prodConfig)) {
     require_once $prodConfig;
 } else {
-    die("Database configuration file not found!");
+    // Fallback: try to guess based on standard paths if relative paths fail (hosting issues)
+    $possiblePaths = [
+        $_SERVER['DOCUMENT_ROOT'] . '/../config/database.php',
+        dirname(__DIR__, 2) . '/config/database.php'
+    ];
+    
+    foreach ($possiblePaths as $path) {
+        if (file_exists($path)) {
+            require_once $path;
+            return;
+        }
+    }
+    
+    die("Database configuration file not found! Searched: " . $prodConfig);
 }
 
 function getDbConnection() {

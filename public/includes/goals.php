@@ -493,8 +493,8 @@ function getGoalStats($userId) {
 function getAllUsersGoalCompletionPercentage($startDate, $endDate) {
     $db = getDbConnection();
     
-    // Get all users
-    $users = $db->query("SELECT id, username FROM users ORDER BY username")->fetchAll(PDO::FETCH_ASSOC);
+    // Get all users except admin
+    $users = $db->query("SELECT id, username FROM users WHERE username != 'admin' ORDER BY username")->fetchAll(PDO::FETCH_ASSOC);
     
     $result = [];
     
@@ -520,14 +520,16 @@ function getAllUsersGoalCompletionPercentage($startDate, $endDate) {
             $stmt->execute([$userId, $date, $date]);
             $totalGoals = (int)$stmt->fetch(PDO::FETCH_ASSOC)['total'];
             
-            // Get count of completed goals on this date
+            // Get completed goals details on this date
             $stmt = $db->prepare("
-                SELECT COUNT(*) as completed
-                FROM goal_logs
-                WHERE user_id = ? AND log_date = ? AND completed = TRUE
+                SELECT gl.notes, g.goal_title, g.goal_category
+                FROM goal_logs gl
+                JOIN goals g ON gl.goal_id = g.id
+                WHERE gl.user_id = ? AND gl.log_date = ? AND gl.completed = TRUE
             ");
             $stmt->execute([$userId, $date]);
-            $completedGoals = (int)$stmt->fetch(PDO::FETCH_ASSOC)['completed'];
+            $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $completedGoals = count($logs);
             
             // Calculate percentage
             $percentage = $totalGoals > 0 ? round(($completedGoals / $totalGoals) * 100) : 0;
@@ -540,7 +542,8 @@ function getAllUsersGoalCompletionPercentage($startDate, $endDate) {
                 'username' => $user['username'],
                 'total_goals' => $totalGoals,
                 'completed_goals' => $completedGoals,
-                'percentage' => $percentage
+                'percentage' => $percentage,
+                'logs' => $logs
             ];
             
             $start->modify('+1 day');

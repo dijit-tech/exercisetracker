@@ -64,6 +64,25 @@ function getRoomById($roomId) {
 }
 
 /**
+ * Get all rooms (for admin)
+ * @return array List of all rooms
+ */
+function getAllRooms() {
+    $db = getDbConnection();
+    
+    $stmt = $db->query("
+        SELECT r.*,
+               u.username as creator_username,
+               (SELECT COUNT(*) FROM room_members WHERE room_id = r.id AND status = 'active') as member_count
+        FROM rooms r
+        JOIN users u ON u.id = r.creator_user_id
+        ORDER BY r.created_at DESC
+    ");
+    
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
  * Update room details
  * @param int $roomId
  * @param string $name

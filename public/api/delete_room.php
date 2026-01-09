@@ -32,8 +32,9 @@ if (!$roomId) {
     exit;
 }
 
-if (!isRoomCreator($roomId, $userId)) {
-    echo json_encode(['success' => false, 'error' => 'Only room creator can delete']);
+// Allow deletion if room creator OR admin
+if (!isRoomCreator($roomId, $userId) && !isAdmin()) {
+    echo json_encode(['success' => false, 'error' => 'Only room creator or admin can delete']);
     exit;
 }
 

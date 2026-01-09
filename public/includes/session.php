@@ -5,11 +5,14 @@
  */
 
 // Load config using same logic as db.php
+$localConfig = __DIR__ . '/config.php';
 $devConfig = __DIR__ . '/../../config/database_dev.php';
 $prodConfig = __DIR__ . '/../../config/database.php';
 
 if (!defined('DB_HOST')) {
-    if (file_exists($devConfig)) {
+    if (file_exists($localConfig)) {
+        require_once $localConfig;
+    } elseif (file_exists($devConfig)) {
         require_once $devConfig;
     } elseif (file_exists($prodConfig)) {
         require_once $prodConfig;

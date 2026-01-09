@@ -269,6 +269,28 @@ $goalChunks = array_chunk($goalsWithStats, 2);
             font-size: 0.9em;
             padding: 8px 16px;
         }
+
+        /* Mobile Adjustments for Leaderboard */
+        @media (max-width: 768px) {
+            .track-block {
+                min-width: 10px;
+                width: 10px;
+                height: 20px;
+                border-radius: 2px;
+                margin-right: 1px;
+            }
+            .track-user-info {
+                min-width: 100px;
+                font-size: 0.9em;
+            }
+            .track-username {
+                font-size: 1.0em;
+            }
+            .race-track {
+                gap: 5px;
+                padding: 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -458,19 +480,13 @@ $goalChunks = array_chunk($goalsWithStats, 2);
         <div class="card mb-4">
             <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="mb-0">🏆 Goal Achievement Leaderboard - <?= htmlspecialchars($monthName) ?></h5>
+                    <h5 class="mb-0">🏆 Goal Achievement Leaderboard</h5>
                     <small>Race to the trophy! Each block = 1 day of progress</small>
                 </div>
-                <div class="btn-group">
-                    <a href="?month=<?= $prevMonth ?>" class="btn btn-sm btn-light">
-                        <i class="bi bi-chevron-left"></i> Prev Month
-                    </a>
-                    <a href="?month=<?= $currentYearMonth ?>" class="btn btn-sm btn-light">
-                        Current
-                    </a>
-                    <a href="?month=<?= $nextMonth ?>" class="btn btn-sm btn-light">
-                        Next Month <i class="bi bi-chevron-right"></i>
-                    </a>
+                <div class="d-flex align-items-center">
+                    <a href="?month=<?= $prevMonth ?>" class="text-white text-decoration-none px-2" title="Previous Month"><i class="bi bi-chevron-left"></i></a>
+                    <span class="fw-bold"><?= htmlspecialchars($monthName) ?></span>
+                    <a href="?month=<?= $nextMonth ?>" class="text-white text-decoration-none px-2" title="Next Month"><i class="bi bi-chevron-right"></i></a>
                 </div>
             </div>
             <div class="card-body">
@@ -516,12 +532,21 @@ $goalChunks = array_chunk($goalsWithStats, 2);
                                         }
                                         
                                         $dayNum = date('j', strtotime($date));
-                                        $title = date('M j, Y', strtotime($date)) . ': ' . 
+                                        $formattedDate = date('M j, Y', strtotime($date));
+                                        $title = $formattedDate . ': ' . 
                                                  $dayData['completed_goals'] . ' of ' . 
                                                  $dayData['total_goals'] . ' goals (' . 
                                                  $percentage . '%)';
                                         
-                                        echo '<div class="track-block ' . $colorClass . '" title="' . htmlspecialchars($title) . '"></div>';
+                                        $logsJson = json_encode($dayData['logs'] ?? []);
+                                        $usernameSafe = htmlspecialchars($userData['username']);
+                                        
+                                        echo '<div class="track-block ' . $colorClass . '" 
+                                                  title="' . htmlspecialchars($title) . '"
+                                                  data-date="' . $formattedDate . '"
+                                                  data-username="' . $usernameSafe . '"
+                                                  data-logs=\'' . htmlspecialchars($logsJson, ENT_QUOTES) . '\'
+                                                  onclick="showDayDetails(this)"></div>';
                                         ?>
                                     <?php endforeach; ?>
                                 </div>
@@ -591,8 +616,64 @@ $goalChunks = array_chunk($goalsWithStats, 2);
         <?php endif; ?>
     </div>
 
+    <!-- Day Details Modal -->
+    <div class="modal fade" id="dayDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dayModalTitle">Activity Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="dayModalBody">
+                    <!-- Content will be populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Show details for a specific day block
+        function showDayDetails(element) {
+            const date = element.dataset.date;
+            const username = element.dataset.username;
+            const logsData = element.dataset.logs;
+            
+            document.getElementById('dayModalTitle').textContent = `${username}'s Activity - ${date}`;
+            
+            const modalBody = document.getElementById('dayModalBody');
+            
+            if (!logsData || logsData === '[]' || logsData === 'null') {
+                modalBody.innerHTML = '<p class="text-muted text-center my-3">No completed activities for this day.</p>';
+            } else {
+                try {
+                    const logs = JSON.parse(logsData);
+                    let html = '<div class="list-group">';
+                    
+                    logs.forEach(log => {
+                        html += `
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">${log.goal_title}</h6>
+                                    <span class="badge bg-primary rounded-pill">${log.goal_category}</span>
+                                </div>
+                                ${log.notes ? `<p class="mb-1 text-muted small"><i class="bi bi-card-text"></i> ${log.notes}</p>` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    modalBody.innerHTML = html;
+                } catch (e) {
+                    console.error('Error parsing logs:', e);
+                    modalBody.innerHTML = '<p class="text-danger">Error loading activity data.</p>';
+                }
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('dayDetailsModal'));
+            modal.show();
+        }
+
         // Quick log goal completion from dashboard
         async function quickLog(goalId) {
             const formData = new FormData();
