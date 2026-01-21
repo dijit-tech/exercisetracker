@@ -1,80 +1,83 @@
 <?php
 /**
- * Rooms Management Functions
- * Handles all room-related operations including CRUD, membership, invites, goals, and leaderboards
+ * Challenges Management Functions
+ * Handles all challenge-related operations including CRUD, membership, invites, goals, and leaderboards
  */
 
 require_once __DIR__ . '/db.php';
 
 // ============================================
-// ROOM CRUD OPERATIONS
+// CHALLENGE CRUD OPERATIONS
 // ============================================
 
 /**
- * Create a new room
+ * Create a new challenge
  * @param int $creatorUserId
  * @param string $name
  * @param string $description
+ * @param string $category
  * @param string $privacy ('private' or 'invite-only')
  * @param string|null $startDate (YYYY-MM-DD)
  * @param string|null $endDate (YYYY-MM-DD)
- * @return int|false Room ID if successful, false otherwise
+ * @return int|false Challenge ID if successful, false otherwise
  */
-function createRoom($creatorUserId, $name, $description, $privacy = 'private', $startDate = null, $endDate = null) {
+function createChallenge($creatorUserId, $name, $description, $category, $privacy = 'private', $startDate = null, $endDate = null) {
+    if (empty($category)) $category = 'Other';
+    
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        INSERT INTO rooms (creator_user_id, name, description, privacy, start_date, end_date, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'active')
+        INSERT INTO challenges (creator_user_id, name, description, category, privacy, start_date, end_date, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
     ");
     
-    $stmt->execute([$creatorUserId, $name, $description, $privacy, $startDate, $endDate]);
+    $stmt->execute([$creatorUserId, $name, $description, $category, $privacy, $startDate, $endDate]);
     
     if ($stmt->rowCount() > 0) {
-        $roomId = $db->lastInsertId();
+        $challengeId = $db->lastInsertId();
         
         // Auto-add creator as first member
-        addRoomMember($roomId, $creatorUserId);
+        addChallengeMember($challengeId, $creatorUserId);
         
-        return $roomId;
+        return $challengeId;
     }
     
     return false;
 }
 
 /**
- * Get room by ID
- * @param int $roomId
- * @return array|false Room data or false if not found
+ * Get challenge by ID
+ * @param int $challengeId
+ * @return array|false Challenge data or false if not found
  */
-function getRoomById($roomId) {
+function getChallengeById($challengeId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT r.*,
                u.username as creator_username,
-               (SELECT COUNT(*) FROM room_members WHERE room_id = r.id AND status = 'active') as member_count
-        FROM rooms r
+               (SELECT COUNT(*) FROM challenge_members WHERE challenge_id = r.id AND status = 'active') as member_count
+        FROM challenges r
         JOIN users u ON u.id = r.creator_user_id
         WHERE r.id = ?
     ");
     
-    $stmt->execute([$roomId]);
+    $stmt->execute([$challengeId]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 /**
- * Get all rooms (for admin)
- * @return array List of all rooms
+ * Get all challenges (for admin)
+ * @return array List of all challenges
  */
-function getAllRooms() {
+function getAllChallenges() {
     $db = getDbConnection();
     
     $stmt = $db->query("
         SELECT r.*,
                u.username as creator_username,
-               (SELECT COUNT(*) FROM room_members WHERE room_id = r.id AND status = 'active') as member_count
-        FROM rooms r
+               (SELECT COUNT(*) FROM challenge_members WHERE challenge_id = r.id AND status = 'active') as member_count
+        FROM challenges r
         JOIN users u ON u.id = r.creator_user_id
         ORDER BY r.created_at DESC
     ");
@@ -83,155 +86,155 @@ function getAllRooms() {
 }
 
 /**
- * Update room details
- * @param int $roomId
+ * Update challenge details
+ * @param int $challengeId
  * @param string $name
  * @param string $description
  * @param string|null $endDate
  * @return bool Success
  */
-function updateRoom($roomId, $name, $description, $endDate = null) {
+function updateChallenge($challengeId, $name, $description, $endDate = null) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        UPDATE rooms 
+        UPDATE challenges 
         SET name = ?, description = ?, end_date = ?
         WHERE id = ?
     ");
     
-    $stmt->execute([$name, $description, $endDate, $roomId]);
+    $stmt->execute([$name, $description, $endDate, $challengeId]);
     return $stmt->rowCount() > 0;
 }
 
 /**
- * Change room status
- * @param int $roomId
+ * Change challenge status
+ * @param int $challengeId
  * @param string $status ('active', 'paused', 'archived', 'deleted')
  * @return bool Success
  */
-function changeRoomStatus($roomId, $status) {
+function changeChallengeStatus($challengeId, $status) {
     $db = getDbConnection();
     
-    $stmt = $db->prepare("UPDATE rooms SET status = ? WHERE id = ?");
-    $stmt->execute([$status, $roomId]);
+    $stmt = $db->prepare("UPDATE challenges SET status = ? WHERE id = ?");
+    $stmt->execute([$status, $challengeId]);
     return $stmt->rowCount() > 0;
 }
 
 /**
- * Delete room permanently
- * @param int $roomId
+ * Delete challenge permanently
+ * @param int $challengeId
  * @return bool Success
  */
-function deleteRoom($roomId) {
-    return changeRoomStatus($roomId, 'deleted');
+function deleteChallenge($challengeId) {
+    return changeChallengeStatus($challengeId, 'deleted');
 }
 
 // ============================================
-// ROOM MEMBERSHIP
+// CHALLENGE MEMBERSHIP
 // ============================================
 
 /**
- * Add member to room
- * @param int $roomId
+ * Add member to challenge
+ * @param int $challengeId
  * @param int $userId
  * @return bool Success
  */
-function addRoomMember($roomId, $userId) {
+function addChallengeMember($challengeId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        INSERT INTO room_members (room_id, user_id, status)
+        INSERT INTO challenge_members (challenge_id, user_id, status)
         VALUES (?, ?, 'active')
         ON DUPLICATE KEY UPDATE status = 'active', joined_at = CURRENT_TIMESTAMP
     ");
     
-    $stmt->execute([$roomId, $userId]);
+    $stmt->execute([$challengeId, $userId]);
     return $stmt->rowCount() > 0;
 }
 
 /**
- * Remove member from room (mark as left)
- * @param int $roomId
+ * Remove member from challenge (mark as left)
+ * @param int $challengeId
  * @param int $userId
  * @return bool Success
  */
-function removeRoomMember($roomId, $userId) {
+function removeChallengeMember($challengeId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        UPDATE room_members 
+        UPDATE challenge_members 
         SET status = 'left'
-        WHERE room_id = ? AND user_id = ?
+        WHERE challenge_id = ? AND user_id = ?
     ");
     
-    $stmt->execute([$roomId, $userId]);
+    $stmt->execute([$challengeId, $userId]);
     
-    // Also remove their goals from the room
+    // Also remove their goals from the challenge
     if ($stmt->rowCount() > 0) {
-        $stmt = $db->prepare("DELETE FROM room_goals WHERE room_id = ? AND user_id = ?");
-        $stmt->execute([$roomId, $userId]);
+        $stmt = $db->prepare("DELETE FROM challenge_goals WHERE challenge_id = ? AND user_id = ?");
+        $stmt->execute([$challengeId, $userId]);
     }
     
     return true;
 }
 
 /**
- * Get all members of a room
- * @param int $roomId
+ * Get all members of a challenge
+ * @param int $challengeId
  * @param string $status ('active' or 'left')
  * @return array Array of member data
  */
-function getRoomMembers($roomId, $status = 'active') {
+function getChallengeMembers($challengeId, $status = 'active') {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT rm.*, u.username, u.email
-        FROM room_members rm
+        FROM challenge_members rm
         JOIN users u ON u.id = rm.user_id
-        WHERE rm.room_id = ? AND rm.status = ?
+        WHERE rm.challenge_id = ? AND rm.status = ?
         ORDER BY rm.joined_at ASC
     ");
     
-    $stmt->execute([$roomId, $status]);
+    $stmt->execute([$challengeId, $status]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**
- * Check if user is member of room
- * @param int $roomId
+ * Check if user is member of challenge
+ * @param int $challengeId
  * @param int $userId
  * @return bool True if active member
  */
-function isRoomMember($roomId, $userId) {
+function isChallengeMember($challengeId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT COUNT(*) 
-        FROM room_members 
-        WHERE room_id = ? AND user_id = ? AND status = 'active'
+        FROM challenge_members 
+        WHERE challenge_id = ? AND user_id = ? AND status = 'active'
     ");
     
-    $stmt->execute([$roomId, $userId]);
+    $stmt->execute([$challengeId, $userId]);
     return $stmt->fetchColumn() > 0;
 }
 
 /**
- * Get user's rooms
+ * Get user's challenges
  * @param int $userId
- * @param string $status Room status filter ('active', 'paused', 'archived')
- * @return array Array of rooms
+ * @param string $status Challenge status filter ('active', 'paused', 'archived')
+ * @return array Array of challenges
  */
-function getUserRooms($userId, $status = 'active') {
+function getUserChallenges($userId, $status = 'active') {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT r.*,
                u.username as creator_username,
-               (SELECT COUNT(*) FROM room_members WHERE room_id = r.id AND status = 'active') as member_count,
-               (SELECT COUNT(*) FROM room_goals WHERE room_id = r.id AND user_id = ?) as my_goals_count
-        FROM rooms r
+               (SELECT COUNT(*) FROM challenge_members WHERE challenge_id = r.id AND status = 'active') as member_count,
+               (SELECT COUNT(*) FROM challenge_goals WHERE challenge_id = r.id AND user_id = ?) as my_goals_count
+        FROM challenges r
         JOIN users u ON u.id = r.creator_user_id
-        JOIN room_members rm ON rm.room_id = r.id
+        JOIN challenge_members rm ON rm.challenge_id = r.id
         WHERE rm.user_id = ? 
           AND rm.status = 'active'
           AND r.status = ?
@@ -243,17 +246,17 @@ function getUserRooms($userId, $status = 'active') {
 }
 
 /**
- * Get count of rooms user is in
+ * Get count of challenges user is in
  * @param int $userId
  * @return int Count
  */
-function getUserRoomCount($userId) {
+function getUserChallengeCount($userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT COUNT(*) 
-        FROM room_members rm
-        JOIN rooms r ON r.id = rm.room_id
+        FROM challenge_members rm
+        JOIN challenges r ON r.id = rm.challenge_id
         WHERE rm.user_id = ? AND rm.status = 'active' AND r.status = 'active'
     ");
     
@@ -262,17 +265,17 @@ function getUserRoomCount($userId) {
 }
 
 // ============================================
-// ROOM GOALS (TRACKING SELECTION)
+// CHALLENGE GOALS (TRACKING SELECTION)
 // ============================================
 
 /**
- * Add goal to room tracking
- * @param int $roomId
+ * Add goal to challenge tracking
+ * @param int $challengeId
  * @param int $goalId
  * @param int $userId
  * @return bool Success
  */
-function addGoalToRoom($roomId, $goalId, $userId) {
+function addGoalToChallenge($challengeId, $goalId, $userId) {
     $db = getDbConnection();
     
     // Verify user owns the goal
@@ -284,62 +287,62 @@ function addGoalToRoom($roomId, $goalId, $userId) {
     }
     
     $stmt = $db->prepare("
-        INSERT INTO room_goals (room_id, goal_id, user_id)
+        INSERT INTO challenge_goals (challenge_id, goal_id, user_id)
         VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
     ");
     
-    $stmt->execute([$roomId, $goalId, $userId]);
+    $stmt->execute([$challengeId, $goalId, $userId]);
     return $stmt->rowCount() > 0;
 }
 
 /**
- * Remove goal from room tracking
- * @param int $roomId
+ * Remove goal from challenge tracking
+ * @param int $challengeId
  * @param int $goalId
  * @param int $userId
  * @return bool Success
  */
-function removeGoalFromRoom($roomId, $goalId, $userId) {
+function removeGoalFromChallenge($challengeId, $goalId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        DELETE FROM room_goals 
-        WHERE room_id = ? AND goal_id = ? AND user_id = ?
+        DELETE FROM challenge_goals 
+        WHERE challenge_id = ? AND goal_id = ? AND user_id = ?
     ");
     
-    $stmt->execute([$roomId, $goalId, $userId]);
+    $stmt->execute([$challengeId, $goalId, $userId]);
     return $stmt->rowCount() > 0;
 }
 
 /**
- * Get goals user is tracking in a room
- * @param int $roomId
+ * Get goals user is tracking in a challenge
+ * @param int $challengeId
  * @param int $userId
  * @return array Array of goals
  */
-function getRoomGoalsByUser($roomId, $userId) {
+function getChallengeGoalsByUser($challengeId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT g.*, rg.added_at
-        FROM room_goals rg
+        FROM challenge_goals rg
         JOIN goals g ON g.id = rg.goal_id
-        WHERE rg.room_id = ? AND rg.user_id = ? AND g.status = 'active'
+        WHERE rg.challenge_id = ? AND rg.user_id = ? AND g.status = 'active'
         ORDER BY rg.added_at ASC
     ");
     
-    $stmt->execute([$roomId, $userId]);
+    $stmt->execute([$challengeId, $userId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**
- * Get user's goals NOT yet in this room (available to add)
- * @param int $roomId
+ * Get user's goals NOT yet in this challenge (available to add)
+ * @param int $challengeId
  * @param int $userId
  * @return array Array of goals
  */
-function getAvailableGoalsForRoom($roomId, $userId) {
+function getAvailableGoalsForChallenge($challengeId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
@@ -348,48 +351,48 @@ function getAvailableGoalsForRoom($roomId, $userId) {
         WHERE g.user_id = ? 
           AND g.status = 'active'
           AND g.id NOT IN (
-              SELECT goal_id FROM room_goals WHERE room_id = ? AND user_id = ?
+              SELECT goal_id FROM challenge_goals WHERE challenge_id = ? AND user_id = ?
           )
         ORDER BY g.created_at DESC
     ");
     
-    $stmt->execute([$userId, $roomId, $userId]);
+    $stmt->execute([$userId, $challengeId, $userId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**
- * Get all goals being tracked in a room (all users)
- * @param int $roomId
+ * Get all goals being tracked in a challenge (all users)
+ * @param int $challengeId
  * @return array Array with user_id => goals
  */
-function getAllRoomGoals($roomId) {
+function getAllChallengeGoals($challengeId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT rg.user_id, u.username, g.id as goal_id, g.goal_title, g.goal_category
-        FROM room_goals rg
+        FROM challenge_goals rg
         JOIN goals g ON g.id = rg.goal_id
         JOIN users u ON u.id = rg.user_id
-        WHERE rg.room_id = ? AND g.status = 'active'
+        WHERE rg.challenge_id = ? AND g.status = 'active'
         ORDER BY rg.user_id, rg.added_at
     ");
     
-    $stmt->execute([$roomId]);
+    $stmt->execute([$challengeId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // ============================================
-// ROOM INVITATIONS
+// CHALLENGE INVITATIONS
 // ============================================
 
 /**
- * Create room invitation
- * @param int $roomId
+ * Create challenge invitation
+ * @param int $challengeId
  * @param int $inviterUserId
  * @param string $inviteeEmail
  * @return int|false Invite ID or false
  */
-function createRoomInvite($roomId, $inviterUserId, $inviteeEmail) {
+function createChallengeInvite($challengeId, $inviterUserId, $inviteeEmail) {
     $db = getDbConnection();
     
     // Check if email belongs to a registered user
@@ -399,38 +402,38 @@ function createRoomInvite($roomId, $inviterUserId, $inviteeEmail) {
     
     // Check if already invited or member
     $stmt = $db->prepare("
-        SELECT COUNT(*) FROM room_invites 
-        WHERE room_id = ? AND invitee_email = ? AND status = 'pending'
+        SELECT COUNT(*) FROM challenge_invites 
+        WHERE challenge_id = ? AND invitee_email = ? AND status = 'pending'
     ");
-    $stmt->execute([$roomId, $inviteeEmail]);
+    $stmt->execute([$challengeId, $inviteeEmail]);
     
     if ($stmt->fetchColumn() > 0) {
         return false; // Already has pending invite
     }
     
     $stmt = $db->prepare("
-        INSERT INTO room_invites (room_id, inviter_user_id, invitee_email, invitee_user_id, status)
+        INSERT INTO challenge_invites (challenge_id, inviter_user_id, invitee_email, invitee_user_id, status)
         VALUES (?, ?, ?, ?, 'pending')
     ");
     
-    $stmt->execute([$roomId, $inviterUserId, $inviteeEmail, $inviteeUserId]);
+    $stmt->execute([$challengeId, $inviterUserId, $inviteeEmail, $inviteeUserId]);
     
     return $stmt->rowCount() > 0 ? $db->lastInsertId() : false;
 }
 
 /**
- * Respond to room invitation
+ * Respond to challenge invitation
  * @param int $inviteId
  * @param int $userId
  * @param string $response ('accepted' or 'declined')
  * @return bool Success
  */
-function respondToRoomInvite($inviteId, $userId, $response) {
+function respondToChallengeInvite($inviteId, $userId, $response) {
     $db = getDbConnection();
     
     // Get invite details
     $stmt = $db->prepare("
-        SELECT * FROM room_invites 
+        SELECT * FROM challenge_invites 
         WHERE id = ? AND invitee_user_id = ? AND status = 'pending'
     ");
     $stmt->execute([$inviteId, $userId]);
@@ -442,7 +445,7 @@ function respondToRoomInvite($inviteId, $userId, $response) {
     
     // Update invite status
     $stmt = $db->prepare("
-        UPDATE room_invites 
+        UPDATE challenge_invites 
         SET status = ?, responded_at = CURRENT_TIMESTAMP
         WHERE id = ?
     ");
@@ -450,7 +453,7 @@ function respondToRoomInvite($inviteId, $userId, $response) {
     
     // If accepted, add as member
     if ($response === 'accepted') {
-        addRoomMember($invite['room_id'], $userId);
+        addChallengeMember($invite['challenge_id'], $userId);
     }
     
     return true;
@@ -465,9 +468,9 @@ function getUserPendingInvites($userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        SELECT ri.*, r.name as room_name, r.description, u.username as inviter_username
-        FROM room_invites ri
-        JOIN rooms r ON r.id = ri.room_id
+        SELECT ri.*, r.name as challenge_name, r.description, r.category as challenge_category, u.username as inviter_username
+        FROM challenge_invites ri
+        JOIN challenges r ON r.id = ri.challenge_id
         JOIN users u ON u.id = ri.inviter_user_id
         WHERE ri.invitee_user_id = ? AND ri.status = 'pending'
         ORDER BY ri.invited_at DESC
@@ -478,36 +481,36 @@ function getUserPendingInvites($userId) {
 }
 
 /**
- * Get invitations sent for a room
- * @param int $roomId
+ * Get invitations sent for a challenge
+ * @param int $challengeId
  * @return array Array of invites
  */
-function getRoomInvites($roomId) {
+function getChallengeInvites($challengeId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT ri.*, u.username as invitee_username
-        FROM room_invites ri
+        FROM challenge_invites ri
         LEFT JOIN users u ON u.id = ri.invitee_user_id
-        WHERE ri.room_id = ?
+        WHERE ri.challenge_id = ?
         ORDER BY ri.invited_at DESC
     ");
     
-    $stmt->execute([$roomId]);
+    $stmt->execute([$challengeId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // ============================================
-// ROOM LEADERBOARD & STATS
+// CHALLENGE LEADERBOARD & STATS
 // ============================================
 
 /**
- * Get room leaderboard for specific month
- * @param int $roomId
+ * Get challenge leaderboard for specific month
+ * @param int $challengeId
  * @param string $month (YYYY-MM format)
  * @return array Array of user scores
  */
-function getRoomLeaderboard($roomId, $month) {
+function getChallengeLeaderboard($challengeId, $month) {
     $db = getDbConnection();
     
     $monthStart = $month . '-01';
@@ -519,7 +522,7 @@ function getRoomLeaderboard($roomId, $month) {
             u.username,
             COUNT(DISTINCT gl.log_date) as days_active,
             SUM(daily_points) as total_points
-        FROM room_members rm
+        FROM challenge_members rm
         JOIN users u ON u.id = rm.user_id
         LEFT JOIN (
             SELECT 
@@ -534,17 +537,17 @@ function getRoomLeaderboard($roomId, $month) {
                 END as daily_points
             FROM goal_logs gl
             WHERE gl.goal_id IN (
-                SELECT goal_id FROM room_goals WHERE room_id = ?
+                SELECT goal_id FROM challenge_goals WHERE challenge_id = ?
             )
             AND gl.log_date BETWEEN ? AND ?
             GROUP BY gl.user_id, gl.log_date
         ) gl ON gl.user_id = rm.user_id
-        WHERE rm.room_id = ? AND rm.status = 'active'
+        WHERE rm.challenge_id = ? AND rm.status = 'active'
         GROUP BY u.id, u.username
         ORDER BY total_points DESC, days_active DESC
     ");
     
-    $stmt->execute([$roomId, $monthStart, $monthEnd, $roomId]);
+    $stmt->execute([$challengeId, $monthStart, $monthEnd, $challengeId]);
     $leaderboard = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Add rank
@@ -558,13 +561,13 @@ function getRoomLeaderboard($roomId, $month) {
 }
 
 /**
- * Get room completion data for heatmap (similar to global but room-filtered)
- * @param int $roomId
+ * Get challenge completion data for heatmap (similar to global but challenge-filtered)
+ * @param int $challengeId
  * @param string $startDate (YYYY-MM-DD)
  * @param string $endDate (YYYY-MM-DD)
  * @return array Date => User ID => completion data
  */
-function getRoomCompletionPercentage($roomId, $startDate, $endDate) {
+function getChallengeCompletionPercentage($challengeId, $startDate, $endDate) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
@@ -579,18 +582,18 @@ function getRoomCompletionPercentage($roomId, $startDate, $endDate) {
         JOIN users u ON u.id = gl.user_id
         JOIN (
             SELECT user_id, COUNT(DISTINCT goal_id) as total_goals
-            FROM room_goals
-            WHERE room_id = ?
+            FROM challenge_goals
+            WHERE challenge_id = ?
             GROUP BY user_id
         ) total ON total.user_id = gl.user_id
-        WHERE gl.goal_id IN (SELECT goal_id FROM room_goals WHERE room_id = ?)
+        WHERE gl.goal_id IN (SELECT goal_id FROM challenge_goals WHERE challenge_id = ?)
           AND gl.log_date BETWEEN ? AND ?
           AND gl.completed = TRUE
         GROUP BY gl.log_date, gl.user_id, u.username, total.total_goals
         ORDER BY gl.log_date, gl.user_id
     ");
     
-    $stmt->execute([$roomId, $roomId, $startDate, $endDate]);
+    $stmt->execute([$challengeId, $challengeId, $startDate, $endDate]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Restructure as [date][user_id] = data
@@ -611,82 +614,82 @@ function getRoomCompletionPercentage($roomId, $startDate, $endDate) {
 }
 
 /**
- * Get room statistics
- * @param int $roomId
+ * Get challenge statistics
+ * @param int $challengeId
  * @return array Stats array
  */
-function getRoomStats($roomId) {
+function getChallengeStats($challengeId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT 
-            (SELECT COUNT(*) FROM room_members WHERE room_id = ? AND status = 'active') as total_members,
-            (SELECT COUNT(DISTINCT goal_id) FROM room_goals WHERE room_id = ?) as total_goals_tracked,
-            (SELECT COUNT(*) FROM room_posts WHERE room_id = ?) as total_posts,
-            (SELECT COUNT(*) FROM room_achievements WHERE room_id = ?) as total_achievements
+            (SELECT COUNT(*) FROM challenge_members WHERE challenge_id = ? AND status = 'active') as total_members,
+            (SELECT COUNT(DISTINCT goal_id) FROM challenge_goals WHERE challenge_id = ?) as total_goals_tracked,
+            (SELECT COUNT(*) FROM challenge_posts WHERE challenge_id = ?) as total_posts,
+            (SELECT COUNT(*) FROM challenge_achievements WHERE challenge_id = ?) as total_achievements
     ");
     
-    $stmt->execute([$roomId, $roomId, $roomId, $roomId]);
+    $stmt->execute([$challengeId, $challengeId, $challengeId, $challengeId]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 // ============================================
-// ROOM POSTS (ACTIVITY FEED)
+// CHALLENGE POSTS (ACTIVITY FEED)
 // ============================================
 
 /**
- * Create post in room
- * @param int $roomId
+ * Create post in challenge
+ * @param int $challengeId
  * @param int $userId
  * @param string $content
  * @param string $postType ('message', 'achievement', 'milestone', 'system')
  * @return int|false Post ID or false
  */
-function createRoomPost($roomId, $userId, $content, $postType = 'message') {
+function createChallengePost($challengeId, $userId, $content, $postType = 'message') {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        INSERT INTO room_posts (room_id, user_id, post_type, content)
+        INSERT INTO challenge_posts (challenge_id, user_id, post_type, content)
         VALUES (?, ?, ?, ?)
     ");
     
-    $stmt->execute([$roomId, $userId, $postType, $content]);
+    $stmt->execute([$challengeId, $userId, $postType, $content]);
     return $stmt->rowCount() > 0 ? $db->lastInsertId() : false;
 }
 
 /**
- * Get room activity feed
- * @param int $roomId
+ * Get challenge activity feed
+ * @param int $challengeId
  * @param int $limit
  * @return array Array of posts
  */
-function getRoomPosts($roomId, $limit = 50) {
+function getChallengePosts($challengeId, $limit = 50) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT rp.*, u.username
-        FROM room_posts rp
+        FROM challenge_posts rp
         JOIN users u ON u.id = rp.user_id
-        WHERE rp.room_id = ?
+        WHERE rp.challenge_id = ?
         ORDER BY rp.created_at DESC
         LIMIT ?
     ");
     
-    $stmt->execute([$roomId, $limit]);
+    $stmt->execute([$challengeId, $limit]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**
- * Delete room post
+ * Delete challenge post
  * @param int $postId
- * @param int $userId (must be post owner or room creator)
+ * @param int $userId (must be post owner or challenge creator)
  * @return bool Success
  */
-function deleteRoomPost($postId, $userId) {
+function deleteChallengePost($postId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        DELETE FROM room_posts 
+        DELETE FROM challenge_posts 
         WHERE id = ? AND user_id = ?
     ");
     
@@ -695,44 +698,44 @@ function deleteRoomPost($postId, $userId) {
 }
 
 // ============================================
-// ROOM ACHIEVEMENTS
+// CHALLENGE ACHIEVEMENTS
 // ============================================
 
 /**
- * Award achievement to user in room
- * @param int $roomId
+ * Award achievement to user in challenge
+ * @param int $challengeId
  * @param int $userId
  * @param string $type
  * @param string $name
  * @param string $description
  * @return int|false Achievement ID or false
  */
-function awardRoomAchievement($roomId, $userId, $type, $name, $description = '') {
+function awardChallengeAchievement($challengeId, $userId, $type, $name, $description = '') {
     $db = getDbConnection();
     
     // Check if already earned
     $stmt = $db->prepare("
-        SELECT COUNT(*) FROM room_achievements 
-        WHERE room_id = ? AND user_id = ? AND achievement_type = ?
+        SELECT COUNT(*) FROM challenge_achievements 
+        WHERE challenge_id = ? AND user_id = ? AND achievement_type = ?
     ");
-    $stmt->execute([$roomId, $userId, $type]);
+    $stmt->execute([$challengeId, $userId, $type]);
     
     if ($stmt->fetchColumn() > 0) {
         return false; // Already has this achievement
     }
     
     $stmt = $db->prepare("
-        INSERT INTO room_achievements (room_id, user_id, achievement_type, achievement_name, achievement_description)
+        INSERT INTO challenge_achievements (challenge_id, user_id, achievement_type, achievement_name, achievement_description)
         VALUES (?, ?, ?, ?, ?)
     ");
     
-    $stmt->execute([$roomId, $userId, $type, $name, $description]);
+    $stmt->execute([$challengeId, $userId, $type, $name, $description]);
     
     if ($stmt->rowCount() > 0) {
         $achievementId = $db->lastInsertId();
         
         // Create system post announcing achievement
-        createRoomPost($roomId, $userId, "earned achievement: {$name}", 'achievement');
+        createChallengePost($challengeId, $userId, "earned achievement: {$name}", 'achievement');
         
         return $achievementId;
     }
@@ -741,41 +744,41 @@ function awardRoomAchievement($roomId, $userId, $type, $name, $description = '')
 }
 
 /**
- * Get room achievements for user
- * @param int $roomId
+ * Get challenge achievements for user
+ * @param int $challengeId
  * @param int $userId
  * @return array Array of achievements
  */
-function getUserRoomAchievements($roomId, $userId) {
+function getUserChallengeAchievements($challengeId, $userId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
-        SELECT * FROM room_achievements 
-        WHERE room_id = ? AND user_id = ?
+        SELECT * FROM challenge_achievements 
+        WHERE challenge_id = ? AND user_id = ?
         ORDER BY earned_at DESC
     ");
     
-    $stmt->execute([$roomId, $userId]);
+    $stmt->execute([$challengeId, $userId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 /**
- * Get all achievements in room
- * @param int $roomId
+ * Get all achievements in challenge
+ * @param int $challengeId
  * @return array Array of achievements with usernames
  */
-function getRoomAchievements($roomId) {
+function getChallengeAchievements($challengeId) {
     $db = getDbConnection();
     
     $stmt = $db->prepare("
         SELECT ra.*, u.username
-        FROM room_achievements ra
+        FROM challenge_achievements ra
         JOIN users u ON u.id = ra.user_id
-        WHERE ra.room_id = ?
+        WHERE ra.challenge_id = ?
         ORDER BY ra.earned_at DESC
     ");
     
-    $stmt->execute([$roomId]);
+    $stmt->execute([$challengeId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
@@ -784,26 +787,26 @@ function getRoomAchievements($roomId) {
 // ============================================
 
 /**
- * Check if user is room creator
- * @param int $roomId
+ * Check if user is challenge creator
+ * @param int $challengeId
  * @param int $userId
  * @return bool
  */
-function isRoomCreator($roomId, $userId) {
+function isChallengeCreator($challengeId, $userId) {
     $db = getDbConnection();
     
-    $stmt = $db->prepare("SELECT COUNT(*) FROM rooms WHERE id = ? AND creator_user_id = ?");
-    $stmt->execute([$roomId, $userId]);
+    $stmt = $db->prepare("SELECT COUNT(*) FROM challenges WHERE id = ? AND creator_user_id = ?");
+    $stmt->execute([$challengeId, $userId]);
     return $stmt->fetchColumn() > 0;
 }
 
 /**
- * Can user perform action on room (is creator or admin)
- * @param int $roomId
+ * Can user perform action on challenge (is creator or admin)
+ * @param int $challengeId
  * @param int $userId
  * @return bool
  */
-function canManageRoom($roomId, $userId) {
+function canManageChallenge($challengeId, $userId) {
     require_once __DIR__ . '/session.php';
-    return isRoomCreator($roomId, $userId) || isAdmin();
+    return isChallengeCreator($challengeId, $userId) || isAdmin();
 }

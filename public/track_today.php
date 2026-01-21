@@ -105,7 +105,7 @@ $success = $_GET['success'] ?? '';
                         <a class="nav-link active" href="/track_today.php">Track Today</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/rooms.php">Rooms</a>
+                        <a class="nav-link" href="/challenges.php">Challenges</a>
                     </li>
                     <?php if ($isAdmin): ?>
                     <li class="nav-item">

@@ -4,7 +4,7 @@ ini_set('display_startup_errors', '0');
 error_reporting(0);
 
 require_once '../includes/session.php';
-require_once '../includes/rooms.php';
+require_once '../includes/challenges.php';
 
 header('Content-Type: application/json');
 
@@ -28,40 +28,41 @@ try {
 
     $userId = $_SESSION['user_id'];
 
-    // Check room limit
-    if (getUserRoomCount($userId) >= 10) {
-        echo json_encode(['success' => false, 'error' => 'Maximum 10 rooms per user']);
+    // Check challenge limit
+    if (getUserChallengeCount($userId) >= 10) {
+        echo json_encode(['success' => false, 'error' => 'Maximum 10 challenges per user']);
         exit;
     }
 
     $name = $input['name'] ?? '';
     $description = $input['description'] ?? '';
+    $category = $input['category'] ?? 'Other';
     $privacy = $input['privacy'] ?? 'private';
     $startDate = $input['start_date'] ?? null;
     $endDate = $input['end_date'] ?? null;
     $goalIds = $input['goal_ids'] ?? []; // Array of goal IDs to track
 
     if (empty($name)) {
-        echo json_encode(['success' => false, 'error' => 'Room name is required']);
+        echo json_encode(['success' => false, 'error' => 'Challenge name is required']);
         exit;
     }
 
-    $roomId = createRoom($userId, $name, $description, $privacy, $startDate, $endDate);
+    $challengeId = createChallenge($userId, $name, $description, $category, $privacy, $startDate, $endDate);
 
-    if ($roomId) {
-        // Add selected goals to room
+    if ($challengeId) {
+        // Add selected goals to challenge
         if (is_array($goalIds)) {
             foreach ($goalIds as $goalId) {
-                addGoalToRoom($roomId, $goalId, $userId);
+                addGoalToChallenge($challengeId, $goalId, $userId);
             }
         }
-        
-        echo json_encode(['success' => true, 'room_id' => $roomId]);
+
+        echo json_encode(['success' => true, 'challenge_id' => $challengeId]);
     } else {
-        echo json_encode(['success' => false, 'error' => 'Failed to create room']);
+        echo json_encode(['success' => false, 'error' => 'Failed to create challenge']);
     }
 } catch (Exception $e) {
     // Log the error
-    error_log("Create room error: " . $e->getMessage());
+    error_log("Create challenge error: " . $e->getMessage());
     echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
 }

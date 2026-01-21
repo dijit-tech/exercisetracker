@@ -8,7 +8,7 @@ error_reporting(0);
 
 require_once __DIR__ . '/includes/session.php';
 require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/rooms.php';
+require_once __DIR__ . '/includes/challenges.php';
 
 // Require admin access
 requireAdmin();
@@ -18,8 +18,8 @@ $currentUserId = getCurrentUserId();
 
 // Get all users
 $users = getAllUsers();
-// Get all rooms
-$rooms = getAllRooms();
+// Get all challenges
+$challenges = getAllChallenges();
 
 // Get messages
 $error = $_GET['error'] ?? '';
@@ -55,7 +55,7 @@ $success = $_GET['success'] ?? '';
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/dashboard.php">� Goal Tracker</a>
+            <a class="navbar-brand" href="/dashboard.php">🎯 Goal Tracker</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -143,37 +143,37 @@ $success = $_GET['success'] ?? '';
                 </div>
             </div>
 
-            <!-- Add Room Form -->
+            <!-- Add Challenge Form -->
             <div class="col-md-12 col-lg-6">
                 <div class="card h-100">
                     <div class="card-header">
-                        <h5 class="mb-0">Add New Room</h5>
+                        <h5 class="mb-0">Add New Challenge</h5>
                     </div>
                     <div class="card-body">
-                        <form action="/api/admin_create_room.php" method="POST">
+                        <form action="/api/admin_create_challenge.php" method="POST">
                             <div class="mb-3">
-                                <label for="room_name" class="form-label">Room Name</label>
-                                <input type="text" class="form-control" id="room_name" name="name" required placeholder="e.g. 2026 Fitness Challenge">
+                                <label for="challenge_name" class="form-label">Challenge Name</label>
+                                <input type="text" class="form-control" id="challenge_name" name="name" required placeholder="e.g. 2026 Fitness Challenge">
                             </div>
                             <div class="mb-3">
-                                <label for="room_description" class="form-label">Description</label>
-                                <textarea class="form-control" id="room_description" name="description" rows="1" placeholder="Optional description"></textarea>
+                                <label for="challenge_description" class="form-label">Description</label>
+                                <textarea class="form-control" id="challenge_description" name="description" rows="1" placeholder="Optional description"></textarea>
                             </div>
                             <div class="mb-3">
-                                <label for="room_end_date" class="form-label">End Date</label>
-                                <input type="date" class="form-control" id="room_end_date" name="end_date">
+                                <label for="challenge_end_date" class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="challenge_end_date" name="end_date">
                             </div>
-                            <button type="submit" class="btn btn-success w-100">Create Room</button>
+                            <button type="submit" class="btn btn-success w-100">Create Challenge</button>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Room List -->
+        <!-- Challenge List -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">All Rooms (<?= isset($rooms) ? count($rooms) : '0' ?>)</h5>
+                <h5 class="mb-0">All Challenges (<?= isset($challenges) ? count($challenges) : '0' ?>)</h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
@@ -190,13 +190,13 @@ $success = $_GET['success'] ?? '';
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (isset($rooms) && count($rooms) > 0): ?>
-                                <?php foreach ($rooms as $room): ?>
+                            <?php if (isset($challenges) && count($challenges) > 0): ?>
+                                <?php foreach ($challenges as $challenge): ?>
                                     <tr>
-                                        <td><?= $room['id'] ?></td>
-                                        <td><?= htmlspecialchars($room['name']) ?></td>
-                                        <td><?= htmlspecialchars($room['creator_username'] ?? 'Unknown') ?></td>
-                                        <td><?= $room['member_count'] ?? 0 ?></td>
+                                        <td><?= $challenge['id'] ?></td>
+                                        <td><?= htmlspecialchars($challenge['name']) ?></td>
+                                        <td><?= htmlspecialchars($challenge['creator_username'] ?? 'Unknown') ?></td>
+                                        <td><?= $challenge['member_count'] ?? 0 ?></td>
                                         <td>
                                             <?php
                                             $badges = [
@@ -204,24 +204,24 @@ $success = $_GET['success'] ?? '';
                                                 'paused' => 'warning',
                                                 'archived' => 'secondary'
                                             ];
-                                            $badgeClass = $badges[$room['status'] ?? 'active'] ?? 'secondary';
+                                            $badgeClass = $badges[$challenge['status'] ?? 'active'] ?? 'secondary';
                                             ?>
-                                            <span class="badge bg-<?= $badgeClass ?>"><?= ucfirst($room['status'] ?? 'active') ?></span>
+                                            <span class="badge bg-<?= $badgeClass ?>"><?= ucfirst($challenge['status'] ?? 'active') ?></span>
                                         </td>
-                                        <td><?= date('M j, Y', strtotime($room['created_at'])) ?></td>
+                                        <td><?= date('M j, Y', strtotime($challenge['created_at'])) ?></td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-warning me-1" 
                                                     data-bs-toggle="modal" 
-                                                    data-bs-target="#editRoomModal"
-                                                    data-room-id="<?= $room['id'] ?>"
-                                                    data-name="<?= htmlspecialchars($room['name']) ?>"
-                                                    data-description="<?= htmlspecialchars($room['description']) ?>"
-                                                    data-end-date="<?= $room['end_date'] ?>">
+                                                    data-bs-target="#editChallengeModal"
+                                                    data-challenge-id="<?= $challenge['id'] ?>"
+                                                    data-name="<?= htmlspecialchars($challenge['name']) ?>"
+                                                    data-description="<?= htmlspecialchars($challenge['description']) ?>"
+                                                    data-end-date="<?= $challenge['end_date'] ?>">
                                                 Edit
                                             </button>
                                             
                                             <button type="button" class="btn btn-sm btn-danger"
-                                                    onclick="deleteRoom(<?= $room['id'] ?>, '<?= addslashes($room['name']) ?>')">
+                                                    onclick="deleteChallenge(<?= $challenge['id'] ?>, '<?= addslashes($challenge['name']) ?>')">
                                                 Delete
                                             </button>
                                         </td>
@@ -229,7 +229,7 @@ $success = $_GET['success'] ?? '';
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted">No rooms found</td>
+                                    <td colspan="7" class="text-center text-muted">No challenges found</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -369,31 +369,31 @@ $success = $_GET['success'] ?? '';
         </div>
     </div>
 
-    <!-- Edit Room Modal -->
-    <div class="modal fade" id="editRoomModal" tabindex="-1" aria-labelledby="editRoomModalLabel" aria-hidden="true">
+    <!-- Edit Challenge Modal -->
+    <div class="modal fade" id="editChallengeModal" tabindex="-1" aria-labelledby="editChallengeModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editRoomModalLabel">Edit Room</h5>
+                    <h5 class="modal-title" id="editChallengeModalLabel">Edit Challenge</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form id="editRoomForm">
+                <form id="editChallengeForm">
                     <div class="modal-body">
-                        <input type="hidden" id="edit_room_id" name="room_id">
+                        <input type="hidden" id="edit_challenge_id" name="challenge_id">
                         
                         <div class="mb-3">
-                            <label for="edit_room_name" class="form-label">Room Name</label>
-                            <input type="text" class="form-control" id="edit_room_name" name="name" required>
+                            <label for="edit_challenge_name" class="form-label">Challenge Name</label>
+                            <input type="text" class="form-control" id="edit_challenge_name" name="name" required>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="edit_room_description" class="form-label">Description</label>
-                            <textarea class="form-control" id="edit_room_description" name="description" rows="3"></textarea>
+                            <label for="edit_challenge_description" class="form-label">Description</label>
+                            <textarea class="form-control" id="edit_challenge_description" name="description" rows="3"></textarea>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="edit_room_end_date" class="form-label">End Date</label>
-                            <input type="date" class="form-control" id="edit_room_end_date" name="end_date">
+                            <label for="edit_challenge_end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="edit_challenge_end_date" name="end_date">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -423,28 +423,28 @@ $success = $_GET['success'] ?? '';
             document.getElementById('edit_is_admin').checked = isAdmin;
         });
 
-        // Edit Room Modal
-        const editRoomModal = document.getElementById('editRoomModal');
-        editRoomModal.addEventListener('show.bs.modal', function (event) {
+        // Edit Challenge Modal
+        const editChallengeModal = document.getElementById('editChallengeModal');
+        editChallengeModal.addEventListener('show.bs.modal', function (event) {
             const button = event.relatedTarget;
-            const roomId = button.getAttribute('data-room-id');
+            const challengeId = button.getAttribute('data-challenge-id');
             const name = button.getAttribute('data-name');
             const description = button.getAttribute('data-description');
             const endDate = button.getAttribute('data-end-date');
             
-            document.getElementById('edit_room_id').value = roomId;
-            document.getElementById('edit_room_name').value = name;
-            document.getElementById('edit_room_description').value = description;
-            document.getElementById('edit_room_end_date').value = endDate;
+            document.getElementById('edit_challenge_id').value = challengeId;
+            document.getElementById('edit_challenge_name').value = name;
+            document.getElementById('edit_challenge_description').value = description;
+            document.getElementById('edit_challenge_end_date').value = endDate;
         });
 
-        // Handle Room Edit
-        document.getElementById('editRoomForm').addEventListener('submit', function(e) {
+        // Handle Challenge Edit
+        document.getElementById('editChallengeForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
             
-            fetch('/api/update_room.php', {
+            fetch('/api/update_challenge.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -465,15 +465,15 @@ $success = $_GET['success'] ?? '';
             });
         });
 
-        // Delete Room
-        function deleteRoom(roomId, roomName) {
-            if (confirm('Are you sure you want to delete the room "' + roomName + '"? This cannot be undone.')) {
-                fetch('/api/delete_room.php', {
+        // Delete Challenge
+        function deleteChallenge(challengeId, challengeName) {
+            if (confirm('Are you sure you want to delete the challenge "' + challengeName + '"? This cannot be undone.')) {
+                fetch('/api/delete_challenge.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ room_id: roomId })
+                    body: JSON.stringify({ challenge_id: challengeId })
                 })
                 .then(response => response.json())
                 .then(data => {

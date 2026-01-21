@@ -11,6 +11,8 @@ services:
       - DB_NAME=exercisetracker
       - DB_USER=root
       - DB_PASS=rootpassword
+      - APP_ENV=local
+      - APP_URL=http://localhost:8000
     depends_on:
       - db
     networks:
@@ -26,7 +28,9 @@ services:
       MYSQL_DATABASE: exercisetracker
     volumes:
       - db_data:/var/lib/mysql
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./database/schema_complete.sql:/docker-entrypoint-initdb.d/02_schema.sql
+      - ./database/rename_rooms_to_challenges.sql:/docker-entrypoint-initdb.d/03_rename.sql
     networks:
       - app-network
 

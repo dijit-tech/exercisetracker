@@ -53,10 +53,45 @@ if (!in_array($category, $validCategories)) {
 try {
     $goalId = createGoal($userId, $title, $category, $startDate, $endDate);
     
+    // Structural Change: All goals must belong to a challenge.
+    // Check if challenge_id is provided in input. If not, use default Personal Challenge.
+    
+    $challengeId = $input['challenge_id'] ?? null;
+    
+    if (!$challengeId) {
+        // Find or create default challenge for user
+        $db = getDbConnection();
+        $stmt = $db->prepare("SELECT id FROM challenges WHERE creator_user_id = ? AND is_default = 1 LIMIT 1");
+        $stmt->execute([$userId]);
+        $challengeId = $stmt->fetchColumn();
+        
+        if (!$challengeId) {
+            // Create default on the fly
+             require_once __DIR__ . '/../includes/challenges.php';
+             // Manual insert to set is_default=1
+             $stmt = $db->prepare("
+                INSERT INTO challenges (creator_user_id, name, description, privacy, status, is_default, created_at)
+                VALUES (?, ?, ?, 'private', 'active', 1, NOW())
+            ");
+            $name = $_SESSION['username'] . "'s Personal Goals";
+            $desc = "Default personal workspace";
+            $stmt->execute([$userId, $name, $desc]);
+            $challengeId = $db->lastInsertId();
+            addChallengeMember($challengeId, $userId);
+        }
+    }
+    
+    // Link goal to challenge
+    require_once __DIR__ . '/../includes/challenges.php';
+    if ($challengeId) {
+        addGoalToChallenge($challengeId, $goalId, $userId);
+    }
+    
     echo json_encode([
         'success' => true,
         'message' => 'Goal created successfully',
-        'goal_id' => $goalId
+        'goal_id' => $goalId,
+        'challenge_id' => $challengeId
     ]);
 } catch (Exception $e) {
     http_response_code(500);

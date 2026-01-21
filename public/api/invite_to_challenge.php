@@ -4,7 +4,7 @@ ini_set('display_startup_errors', '0');
 error_reporting(0);
 
 require_once '../includes/session.php';
-require_once '../includes/rooms.php';
+require_once '../includes/challenges.php';
 
 header('Content-Type: application/json');
 
@@ -25,16 +25,16 @@ if ($input === null) {
 }
 
 $userId = $_SESSION['user_id'];
-$roomId = $input['room_id'] ?? 0;
+$challengeId = $input['challenge_id'] ?? $input['room_id'] ?? 0;
 $inviteeEmail = $input['invitee_email'] ?? '';
 
-if (!$roomId || !$inviteeEmail) {
-    echo json_encode(['success' => false, 'error' => 'Room ID and email required']);
+if (!$challengeId || !$inviteeEmail) {
+    echo json_encode(['success' => false, 'error' => 'Challenge ID and email required']);
     exit;
 }
 
-if (!isRoomCreator($roomId, $userId)) {
-    echo json_encode(['success' => false, 'error' => 'Only room creator can send invites']);
+if (!isChallengeCreator($challengeId, $userId)) {
+    echo json_encode(['success' => false, 'error' => 'Only challenge creator can send invites']);
     exit;
 }
 
@@ -43,7 +43,7 @@ if (!filter_var($inviteeEmail, FILTER_VALIDATE_EMAIL)) {
     exit;
 }
 
-$inviteId = createRoomInvite($roomId, $userId, $inviteeEmail);
+$inviteId = createChallengeInvite($challengeId, $userId, $inviteeEmail);
 
 if ($inviteId) {
     echo json_encode(['success' => true, 'invite_id' => $inviteId]);

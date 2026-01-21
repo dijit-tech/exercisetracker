@@ -8,6 +8,7 @@ error_reporting(0);
 
 require_once __DIR__ . '/includes/session.php';
 require_once __DIR__ . '/includes/goals.php';
+require_once __DIR__ . '/includes/challenges.php';
 
 startSession();
 requireLogin();
@@ -21,6 +22,10 @@ $activeGoals = getGoalsWithStats($userId);
 $pausedGoals = getPausedGoals($userId);
 $archivedGoals = getArchivedGoals($userId);
 $categories = getGoalCategories();
+
+// Get user's challenges for selection
+$myChallenges = getUserChallenges($userId, 'active');
+
 
 // Get messages
 $error = $_GET['error'] ?? '';
@@ -95,7 +100,7 @@ $success = $_GET['success'] ?? '';
                         <a class="nav-link" href="/track_today.php">Track Today</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/rooms.php">Rooms</a>
+                        <a class="nav-link" href="/challenges.php">Challenges</a>
                     </li>
                     <?php if ($isAdmin): ?>
                     <li class="nav-item">
@@ -303,6 +308,30 @@ $success = $_GET['success'] ?? '';
                                 <?php endforeach; ?>
                             </select>
                         </div>
+
+                         <div class="mb-3">
+                            <label for="goalChallenge" class="form-label">Add to Challenge (Optional)</label>
+                            <select class="form-select" id="goalChallenge" name="challenge_id">
+                                <option value="">-- Personal (Default) --</option>
+                                <?php foreach ($myChallenges as $challenge): ?>
+                                    <?php 
+                                        // Skip if it's the hidden default one, or show it? 
+                                        // Usually users want to pick specific shared challenges.
+                                        // If we filter, we need is_default in the query.
+                                        // Assuming getUserChallenges fetches is_default. 
+                                        $label = $challenge['name'];
+                                        if (isset($challenge['is_default']) && $challenge['is_default']) {
+                                             $label .= " (Personal Workspace)";
+                                             $isSelected = 'selected';
+                                        } else {
+                                             $isSelected = '';
+                                        }
+                                    ?>
+                                    <option value="<?= $challenge['id'] ?>" data-category="<?= htmlspecialchars($challenge['category'] ?? 'Other') ?>" <?= $isSelected ?>><?= htmlspecialchars($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="text-muted">Select a challenge to track this goal in.</small>
+                        </div>
                         
                         <div class="mb-3">
                             <label for="startDate" class="form-label">Start Date</label>
@@ -370,6 +399,10 @@ $success = $_GET['success'] ?? '';
         document.getElementById('createGoalForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Ensure category is included if locked
+            const catSelect = document.getElementById('goalCategory');
+            if (catSelect) catSelect.disabled = false;
+
             const formData = new FormData(this);
             
             try {
@@ -483,6 +516,23 @@ $success = $_GET['success'] ?? '';
             } catch (error) {
                 alert('Error deleting goal');
             }
+        }
+
+        // Challenge Category Logic
+        const challengeSelect = document.getElementById('goalChallenge');
+        const categorySelect = document.getElementById('goalCategory');
+        if (challengeSelect && categorySelect) {
+            challengeSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const category = selectedOption.dataset.category;
+                
+                if (category && category !== 'Other') {
+                    categorySelect.value = category;
+                    categorySelect.disabled = true; 
+                } else {
+                    categorySelect.disabled = false;
+                }
+            });
         }
     </script>
 </body>

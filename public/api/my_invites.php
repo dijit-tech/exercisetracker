@@ -4,7 +4,7 @@ ini_set('display_startup_errors', '0');
 error_reporting(0);
 
 require_once '../includes/session.php';
-require_once '../includes/rooms.php';
+require_once '../includes/challenges.php';
 
 header('Content-Type: application/json');
 

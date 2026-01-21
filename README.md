@@ -1,32 +1,48 @@
-# Exercise Tracker
+# Goal Tracker
 
-A comprehensive web application for tracking daily exercises with multi-user support, admin panel, and yearly activity calendar visualization.
+A gamified web application for tracking personal goals, joining social challenges, and visualizing progress with extensive community features.
 
-🌐 **Live Demo:** [https://exercisetracker.dijit.tech](https://exercisetracker.dijit.tech)
+🌐 **Live Demo:** [https://goaltracker.dijit.tech](https://goaltracker.dijit.tech)
 
 ## Features
 
-### User Features
-- **Exercise Management**: Add, view, and delete exercises with type, duration, and notes
-- **Dashboard**: Personal statistics showing weekly exercises, total minutes, and active days
-- **Exercise History**: View all logged exercises with filtering and search
-- **Responsive Design**: Beautiful Bootstrap 5 UI that works on all devices
+### 🚀 Key Highlights
+- **Gamified Progress:** Visualize specific success with "Rocketship" leaderboards that grow as you achieve goals.
+- **Social Accountability:** Compete in Challenges with friends or coworkers to stay motivated.
+- **Zero-Friction Tracking:** Log your daily goals in seconds from any device.
 
-### Admin Features
-- **User Management**: Create, edit, and delete user accounts
-- **Password Management**: Change passwords for any user
-- **Yearly Activity Calendar**: Visual grid showing all users' exercise activity for 2026
-  - Daily checkmarks (✓) for exercise completion
-  - Monthly grouping for easy navigation
-  - Sticky columns for better scrolling experience
-- **Role Management**: Grant or revoke admin privileges
+### 👤 For Users: Crush Your Goals
+**1. Personalized Goal Dashboard**
+- **Unlimited Goals:** Track anything—fitness, reading, coding, or hydration.
+- **Smart Categorization:** Organize goals by type (Health, Career, Finance, Personal).
+- **Daily Logging:** Simple, one-click check-ins for each goal.
+- **Smart Stats:** View your current streak, completion rate, and total active goals at a glance.
 
-### Technical Features
-- **Secure Authentication**: Session-based authentication with custom session storage
-- **Database**: MySQL with PDO for secure queries
-- **Docker Support**: Complete local development environment
-- **Production Ready**: Deployment scripts for FTP upload
-- **Testing**: Selenium test suite for authentication flows
+**2. Social Challenges**
+- **Join & Compete:** Enter specific challenges (e.g., "30-Day Fitness Challenge") to focus your efforts.
+- **Visual Leaderboards:** Watch your avatar climb the ranking tower in real-time.
+- **Activity Feed:** Celebrate wins and stay inspired by seeing what your peers are accomplishing.
+
+**3. Progress Visualization**
+- **Yearly Grid:** See your entire year's activity in a contribution graph.
+- **Visual History:** Filterable history of every goal you've ever logged.
+
+### 🏢 For Admins & Communities
+**1. Community Management**
+- **Create Challenges:** Robust tools to launch public or private challenges for your team.
+- **Invite System:** Easily invite members via email to join specific challenges.
+- **Privacy Controls:** Support for Public (open to all), Private (invite only), and Hidden groups.
+
+**2. Administration**
+- **User Management:** Centralized dashboard to view, edit, or remove users.
+- **Security:** Admin-controlled password resets and role management.
+- **Data Integrity:** Secure, session-based authentication.
+
+### 🛠️ Technical Features
+- **Mobile Optimized:** Fully responsive Bootstrap 5 design.
+- **Secure Authentication:** Industry-standard Bcrypt hashing and secure session handling.
+- **Production Ready:** Dockerized development and automated FTP deployment scripts.
+- **Test Coverage:** Comprehensive Selenium test suites for Auth and Challenges.
 
 ## Technology Stack
 

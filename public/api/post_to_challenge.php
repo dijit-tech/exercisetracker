@@ -4,7 +4,7 @@ ini_set('display_startup_errors', '0');
 error_reporting(0);
 
 require_once '../includes/session.php';
-require_once '../includes/rooms.php';
+require_once '../includes/challenges.php';
 
 header('Content-Type: application/json');
 
@@ -25,20 +25,20 @@ if ($input === null) {
 }
 
 $userId = $_SESSION['user_id'];
-$roomId = $input['room_id'] ?? 0;
+$challengeId = $input['challenge_id'] ?? $input['room_id'] ?? 0;
 $content = $input['content'] ?? '';
 
-if (!$roomId || empty($content)) {
-    echo json_encode(['success' => false, 'error' => 'Room ID and content required']);
+if (!$challengeId || empty($content)) {
+    echo json_encode(['success' => false, 'error' => 'Challenge ID and content required']);
     exit;
 }
 
-if (!isRoomMember($roomId, $userId)) {
-    echo json_encode(['success' => false, 'error' => 'Not a member of this room']);
+if (!isChallengeMember($challengeId, $userId)) {
+    echo json_encode(['success' => false, 'error' => 'Not a member of this challenge']);
     exit;
 }
 
-$postId = createRoomPost($roomId, $userId, $content, 'message');
+$postId = createChallengePost($challengeId, $userId, $content, 'message');
 
 if ($postId) {
     echo json_encode(['success' => true, 'post_id' => $postId]);

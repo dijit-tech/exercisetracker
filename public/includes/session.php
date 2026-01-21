@@ -10,7 +10,12 @@ $devConfig = __DIR__ . '/../../config/database_dev.php';
 $prodConfig = __DIR__ . '/../../config/database.php';
 
 if (!defined('DB_HOST')) {
-    if (file_exists($localConfig)) {
+    // Check for Docker environment variables first
+    if (getenv('DB_HOST')) {
+        require_once __DIR__ . '/config_docker.php';
+    }
+    // Check for local config first
+    elseif (file_exists($localConfig)) {
         require_once $localConfig;
     } elseif (file_exists($devConfig)) {
         require_once $devConfig;

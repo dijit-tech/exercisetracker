@@ -8,6 +8,7 @@ error_reporting(0);
 
 require_once __DIR__ . '/includes/session.php';
 require_once __DIR__ . '/includes/goals.php';
+require_once __DIR__ . '/includes/challenges.php'; // Included for notifications
 
 startSession();
 requireLogin();
@@ -16,9 +17,13 @@ $username = getCurrentUsername();
 $isAdmin = isAdmin();
 $userId = getCurrentUserId();
 
+// Get Pending Invites count
+$pendingInvites = getUserPendingInvites($userId);
+$pendingInvitesCount = count($pendingInvites);
+
 // Get goal stats
 $stats = getGoalStats($userId);
-$goalsWithStats = getGoalsWithStats($userId);
+$goalsGrouped = getGoalsWithStatsGroupedByRoom($userId);
 $recentActivity = getRecentActivity($userId, 10);
 
 // Get month from query parameter or default to current month
@@ -33,8 +38,8 @@ $prevMonth = (clone $monthDate)->modify('-1 month')->format('Y-m');
 $nextMonth = (clone $monthDate)->modify('+1 month')->format('Y-m');
 $currentYearMonth = date('Y-m');
 
-// Get all users goal completion percentage for the month (heatmap)
-$allUsersCompletion = getAllUsersGoalCompletionPercentage($monthStart, $monthEnd);
+// Get all users goal completion percentage for the month (heatmap) - REMOVED for Room-based view
+// $allUsersCompletion = getAllUsersGoalCompletionPercentage($monthStart, $monthEnd);
 
 // Generate date range for the month
 $startDate = new DateTime($monthStart);
@@ -44,49 +49,15 @@ for ($date = clone $startDate; $date <= $endDate; $date->modify('+1 day')) {
     $dateRange[] = $date->format('Y-m-d');
 }
 
-// Calculate scores and rankings for leaderboard
-$userScores = [];
-foreach ($allUsersCompletion as $date => $users) {
-    foreach ($users as $uid => $data) {
-        if (!isset($userScores[$uid])) {
-            $userScores[$uid] = [
-                'username' => $data['username'],
-                'score' => 0,
-                'days' => []
-            ];
-        }
-        // Scoring: 100%=10pts, 67-99%=7pts, 34-66%=5pts, 1-33%=2pts, 0%=0pts
-        $percentage = $data['percentage'];
-        if ($percentage == 100) {
-            $points = 10;
-        } elseif ($percentage >= 67) {
-            $points = 7;
-        } elseif ($percentage >= 34) {
-            $points = 5;
-        } elseif ($percentage >= 1) {
-            $points = 2;
-        } else {
-            $points = 0;
-        }
-        $userScores[$uid]['score'] += $points;
-        $userScores[$uid]['days'][$date] = $data;
+// Fetch Leaderboards for each Room
+foreach ($goalsGrouped as &$group) {
+    if ($group['room_id']) {
+        $group['leaderboard'] = getChallengeLeaderboard($group['room_id'], $currentMonth);
     }
 }
+unset($group);
 
-// Sort by score descending
-uasort($userScores, function($a, $b) {
-    return $b['score'] - $a['score'];
-});
-
-// Assign ranks
-$rank = 1;
-foreach ($userScores as $uid => &$data) {
-    $data['rank'] = $rank++;
-}
-unset($data);
-
-// Split goals into chunks for carousel (2 goals per slide)
-$goalChunks = array_chunk($goalsWithStats, 2);
+// Goals are now grouped by room, chunking happens in the view
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -310,10 +281,15 @@ $goalChunks = array_chunk($goalsWithStats, 2);
                         <a class="nav-link" href="/goals.php">My Goals</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/track_today.php">Track Today</a>
+                        <a class="nav-link" href="/challenges.php">
+                            Challenges 
+                            <?php if ($pendingInvitesCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill"><?php echo $pendingInvitesCount; ?></span>
+                            <?php endif; ?>
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/rooms.php">Rooms</a>
+                        <a class="nav-link" href="/track_today.php">Track Today</a>
                     </li>
                     <?php if ($isAdmin): ?>
                     <li class="nav-item">
@@ -333,6 +309,15 @@ $goalChunks = array_chunk($goalsWithStats, 2);
 
     <!-- Main Content -->
     <div class="container mt-4">
+        <?php if ($pendingInvitesCount > 0): ?>
+        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-envelope-exclamation-fill me-2"></i>
+            You have <strong><?php echo $pendingInvitesCount; ?></strong> pending challenge invitation<?php echo $pendingInvitesCount > 1 ? 's' : ''; ?>.
+            <a href="/challenges.php" class="alert-link">View Invitations</a>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php endif; ?>
+
         <!-- Welcome Card -->
         <div class="welcome-card">
             <div class="row align-items-center">
@@ -371,16 +356,29 @@ $goalChunks = array_chunk($goalsWithStats, 2);
         </div>
 
         <!-- Goal Cards Carousel -->
-        <?php if (!empty($goalsWithStats)): ?>
+        <?php if (!empty($goalsGrouped)): ?>
+            <?php foreach ($goalsGrouped as $roomGroup): ?>
+                <?php 
+                    $roomName = htmlspecialchars($roomGroup['room_name']);
+                    $roomGoals = $roomGroup['goals'];
+                    $goalChunks = array_chunk($roomGoals, 2);
+                    $carouselId = 'carousel-' . ($roomGroup['room_id'] ?: 'personal');
+                ?>
         <div class="card mb-4">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-bullseye"></i> Your Active Goals</h5>
+                <h5 class="mb-0">
+                    <?php if($roomGroup['room_id']): ?>
+                        <i class="bi bi-trophy"></i> <?= $roomName ?>
+                    <?php else: ?>
+                        <i class="bi bi-person"></i> <?= $roomName ?>
+                    <?php endif; ?>
+                </h5>
                 <a href="/goals.php" class="btn btn-light btn-sm">
-                    <i class="bi bi-gear"></i> Manage Goals
+                    <i class="bi bi-gear"></i> Manage
                 </a>
             </div>
             <div class="card-body">
-                <div id="goalsCarousel" class="carousel slide" data-bs-ride="false">
+                <div id="<?= $carouselId ?>" class="carousel slide" data-bs-ride="false">
                     <div class="carousel-inner">
                         <?php foreach ($goalChunks as $index => $chunk): ?>
                             <div class="carousel-item <?= $index === 0 ? 'active' : '' ?>">
@@ -441,18 +439,18 @@ $goalChunks = array_chunk($goalsWithStats, 2);
                     </div>
                     
                     <?php if (count($goalChunks) > 1): ?>
-                        <button class="carousel-control-prev" type="button" data-bs-target="#goalsCarousel" data-bs-slide="prev">
+                        <button class="carousel-control-prev" type="button" data-bs-target="#<?= $carouselId ?>" data-bs-slide="prev">
                             <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Previous</span>
                         </button>
-                        <button class="carousel-control-next" type="button" data-bs-target="#goalsCarousel" data-bs-slide="next">
+                        <button class="carousel-control-next" type="button" data-bs-target="#<?= $carouselId ?>" data-bs-slide="next">
                             <span class="carousel-control-next-icon" aria-hidden="true"></span>
                             <span class="visually-hidden">Next</span>
                         </button>
                         
                         <div class="carousel-indicators position-static mt-3">
                             <?php foreach ($goalChunks as $index => $chunk): ?>
-                                <button type="button" data-bs-target="#goalsCarousel" 
+                                <button type="button" data-bs-target="#<?= $carouselId ?>" 
                                         data-bs-slide-to="<?= $index ?>" 
                                         class="<?= $index === 0 ? 'active' : '' ?>" 
                                         aria-current="<?= $index === 0 ? 'true' : 'false' ?>" 
@@ -461,8 +459,41 @@ $goalChunks = array_chunk($goalsWithStats, 2);
                         </div>
                     <?php endif; ?>
                 </div>
+                
+                <!-- Quick Leaderboard View -->
+                <?php if (!empty($roomGroup['leaderboard'])): ?>
+                <div class="mt-3 pt-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="text-muted mb-0 small text-uppercase fw-bold"><i class="bi bi-trophy"></i> Top Performers</h6>
+                        <a href="/challenge.php?id=<?= $roomGroup['room_id'] ?>" class="text-decoration-none small">View Full Board <i class="bi bi-chevron-right"></i></a>
+                    </div>
+                    <div class="row g-2">
+                        <?php 
+                        $topLimit = 5;
+                        $count = 0;
+                        foreach ($roomGroup['leaderboard'] as $lbUser): 
+                            if ($count++ >= $topLimit) break;
+                            $isMe = ($lbUser['username'] === $username);
+                        ?>
+                        <div class="col-auto">
+                            <span class="badge <?= $isMe ? 'bg-primary' : 'bg-light text-dark border' ?> rounded-pill">
+                                <?php 
+                                if($lbUser['rank'] == 1) echo '🥇';
+                                elseif($lbUser['rank'] == 2) echo '🥈';
+                                elseif($lbUser['rank'] == 3) echo '🥉';
+                                else echo '#' . $lbUser['rank'];
+                                ?>
+                                <?= htmlspecialchars($lbUser['username']) ?> 
+                                <span class="opacity-75 ms-1">(<?= $lbUser['total_points'] ?>)</span>
+                            </span>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
+        <?php endforeach; ?>
         <?php else: ?>
         <div class="card mb-4">
             <div class="card-body text-center py-5">
@@ -475,120 +506,6 @@ $goalChunks = array_chunk($goalsWithStats, 2);
             </div>
         </div>
         <?php endif; ?>
-
-        <!-- Social Leaderboard - Race Track -->
-        <div class="card mb-4">
-            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="mb-0">🏆 Goal Achievement Leaderboard</h5>
-                    <small>Race to the trophy! Each block = 1 day of progress</small>
-                </div>
-                <div class="d-flex align-items-center">
-                    <a href="?month=<?= $prevMonth ?>" class="text-white text-decoration-none px-2" title="Previous Month"><i class="bi bi-chevron-left"></i></a>
-                    <span class="fw-bold"><?= htmlspecialchars($monthName) ?></span>
-                    <a href="?month=<?= $nextMonth ?>" class="text-white text-decoration-none px-2" title="Next Month"><i class="bi bi-chevron-right"></i></a>
-                </div>
-            </div>
-            <div class="card-body">
-                <?php if (!empty($userScores)): ?>
-                    <div class="leaderboard-container">
-                        <?php foreach ($userScores as $uid => $userData): ?>
-                            <div class="race-track">
-                                <!-- User Info -->
-                                <div class="track-user-info">
-                                    <div class="track-username"><?= htmlspecialchars($userData['username']) ?></div>
-                                    <div class="track-score"><?= $userData['score'] ?> points</div>
-                                    <div class="track-rank <?= $userData['rank'] <= 3 ? 'rank-' . $userData['rank'] : 'rank-other' ?>">
-                                        <?php 
-                                        if ($userData['rank'] == 1) echo '🥇 #1';
-                                        elseif ($userData['rank'] == 2) echo '🥈 #2';
-                                        elseif ($userData['rank'] == 3) echo '🥉 #3';
-                                        else echo '#' . $userData['rank'];
-                                        ?>
-                                    </div>
-                                </div>
-                                
-                                <!-- Start Flag -->
-                                <div class="start-flag">🏁</div>
-                                
-                                <!-- Progress Blocks -->
-                                <div class="track-progress">
-                                    <?php foreach ($dateRange as $date): ?>
-                                        <?php
-                                        $dayData = $userData['days'][$date] ?? ['percentage' => 0, 'total_goals' => 0, 'completed_goals' => 0];
-                                        $percentage = $dayData['percentage'];
-                                        
-                                        // Determine color class
-                                        if ($percentage == 0) {
-                                            $colorClass = 'percent-0';
-                                        } elseif ($percentage <= 33) {
-                                            $colorClass = 'percent-1-33';
-                                        } elseif ($percentage <= 66) {
-                                            $colorClass = 'percent-34-66';
-                                        } elseif ($percentage < 100) {
-                                            $colorClass = 'percent-67-99';
-                                        } else {
-                                            $colorClass = 'percent-100';
-                                        }
-                                        
-                                        $dayNum = date('j', strtotime($date));
-                                        $formattedDate = date('M j, Y', strtotime($date));
-                                        $title = $formattedDate . ': ' . 
-                                                 $dayData['completed_goals'] . ' of ' . 
-                                                 $dayData['total_goals'] . ' goals (' . 
-                                                 $percentage . '%)';
-                                        
-                                        $logsJson = json_encode($dayData['logs'] ?? []);
-                                        $usernameSafe = htmlspecialchars($userData['username']);
-                                        
-                                        echo '<div class="track-block ' . $colorClass . '" 
-                                                  title="' . htmlspecialchars($title) . '"
-                                                  data-date="' . $formattedDate . '"
-                                                  data-username="' . $usernameSafe . '"
-                                                  data-logs=\'' . htmlspecialchars($logsJson, ENT_QUOTES) . '\'
-                                                  onclick="showDayDetails(this)"></div>';
-                                        ?>
-                                    <?php endforeach; ?>
-                                </div>
-                                
-                                <!-- Finish Trophy -->
-                                <div class="track-finish">🏆</div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="text-center py-5">
-                        <p class="text-muted">No goal completion data for this month yet.</p>
-                    </div>
-                <?php endif; ?>
-                
-                <!-- Legend -->
-                <div class="calendar-legend">
-                    <span>Less</span>
-                    <div class="legend-item">
-                        <div class="legend-box percent-0"></div>
-                        <span>0%</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-box percent-1-33"></div>
-                        <span>1-33%</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-box percent-34-66"></div>
-                        <span>34-66%</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-box percent-67-99"></div>
-                        <span>67-99%</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-box percent-100"></div>
-                        <span>100%</span>
-                    </div>
-                    <span>More</span>
-                </div>
-            </div>
-        </div>
 
         <!-- Recent Activity Feed -->
         <?php if (!empty($recentActivity)): ?>

@@ -4,7 +4,7 @@ ini_set('display_startup_errors', '0');
 error_reporting(0);
 
 require_once '../includes/session.php';
-require_once '../includes/rooms.php';
+require_once '../includes/challenges.php';
 
 header('Content-Type: application/json');
 
@@ -16,6 +16,6 @@ if (!isLoggedIn()) {
 $userId = $_SESSION['user_id'];
 $status = $_GET['status'] ?? 'active';
 
-$rooms = getUserRooms($userId, $status);
+$challenges = getUserChallenges($userId, $status);
 
-echo json_encode(['success' => true, 'rooms' => $rooms]);
+echo json_encode(['success' => true, 'challenges' => $challenges]);

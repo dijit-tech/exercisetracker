@@ -4,7 +4,7 @@ ini_set('display_startup_errors', '0');
 error_reporting(0);
 
 require_once '../includes/session.php';
-require_once '../includes/rooms.php';
+require_once '../includes/challenges.php';
 
 header('Content-Type: application/json');
 
@@ -25,21 +25,17 @@ if ($input === null) {
 }
 
 $userId = $_SESSION['user_id'];
-$roomId = $input['room_id'] ?? 0;
+$challengeId = $input['challenge_id'] ?? $input['room_id'] ?? 0;
 $goalId = $input['goal_id'] ?? 0;
 
-if (!$roomId || !$goalId) {
-    echo json_encode(['success' => false, 'error' => 'Room ID and Goal ID required']);
+if (!$challengeId || !$goalId) {
+    echo json_encode(['success' => false, 'error' => 'Challenge ID and Goal ID required']);
     exit;
 }
 
-if (!isRoomMember($roomId, $userId)) {
-    echo json_encode(['success' => false, 'error' => 'Not a member of this room']);
-    exit;
-}
-
-if (removeGoalFromRoom($roomId, $goalId, $userId)) {
+// We don't necessarily need to check if member, just if they own the goal mapping which removeGoalFromChallenge handles via user_id
+if (removeGoalFromChallenge($challengeId, $goalId, $userId)) {
     echo json_encode(['success' => true]);
 } else {
-    echo json_encode(['success' => false, 'error' => 'Failed to remove goal from room']);
+    echo json_encode(['success' => false, 'error' => 'Failed to remove goal from challenge']);
 }

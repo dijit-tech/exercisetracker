@@ -602,3 +602,74 @@ function getGoalsWithStats($userId) {
     
     return $goals;
 }
+
+/**
+ * Get goals with stats, grouped by room/challenge
+ */
+function getGoalsWithStatsGroupedByRoom($userId) {
+    $db = getDbConnection();
+    
+    // Fetch active goals joined with their rooms/challenges
+    $stmt = $db->prepare("
+        SELECT 
+            g.*,
+            c.id as room_id,
+            c.name as room_name,
+            c.category as room_category
+        FROM goals g
+        LEFT JOIN challenge_goals cg ON g.id = cg.goal_id
+        LEFT JOIN challenges c ON cg.challenge_id = c.id
+        WHERE g.user_id = ? AND g.status = 'active'
+        ORDER BY CASE WHEN c.id IS NULL THEN 1 ELSE 0 END, c.name ASC, g.goal_title ASC
+    ");
+    $stmt->execute([$userId]);
+    $rawGoals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $grouped = [];
+    
+    foreach ($rawGoals as $goal) {
+        // Calculate stats (same as getGoalsWithStats)
+        $goal['current_streak'] = calculateCurrentStreak($goal['id']);
+        $goal['longest_streak'] = calculateLongestStreak($goal['id']);
+        $goal['total_completed'] = getTotalCompletedDays($goal['id']);
+        $goal['success_rate'] = getSuccessRate($goal['id'], 7);
+        
+        // Check if completed today
+        $today = date('Y-m-d');
+        $todayLog = getGoalLogForDate($goal['id'], $today);
+        $goal['completed_today'] = $todayLog && $todayLog['completed'];
+        
+        // Calculate days remaining
+        if ($goal['end_date']) {
+            $now = new DateTime();
+            $endDate = new DateTime($goal['end_date']);
+            $diff = $now->diff($endDate);
+            $goal['days_remaining'] = $diff->invert ? 0 : $diff->days;
+        } else {
+            $goal['days_remaining'] = null;
+        }
+        
+        // Grouping
+        $roomId = $goal['room_id'] ?: 0;
+        $roomName = $goal['room_name'] ?: 'Personal Goals';
+        
+        if (!isset($grouped[$roomId])) {
+            $grouped[$roomId] = [
+                'room_id' => $roomId,
+                'room_name' => $roomName,
+                'goals' => []
+            ];
+        }
+        
+        $grouped[$roomId]['goals'][] = $goal;
+    }
+    
+    // Ensure "Personal Goals" (0) is at the bottom if it exists
+    if (isset($grouped[0])) {
+        $personal = $grouped[0];
+        unset($grouped[0]);
+        $grouped[0] = $personal;
+    }
+    
+    return array_values($grouped);
+}

@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin API - Create Room
+ * Admin API - Create Challenge
  */
 
 error_reporting(E_ALL);
@@ -10,7 +10,7 @@ ini_set('log_errors', '1');
 ob_start();
 
 require_once __DIR__ . '/../includes/session.php';
-require_once __DIR__ . '/../includes/rooms.php';
+require_once __DIR__ . '/../includes/challenges.php';
 
 // Require admin access
 if (!isAdmin()) {
@@ -34,20 +34,20 @@ $endDate = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
 // Validate
 if (empty($name)) {
     ob_end_clean();
-    header('Location: /admin.php?error=Room name is required');
+    header('Location: /admin.php?error=Challenge name is required');
     exit;
 }
 
-// Create room
+// Create challenge
 // Use current admin user as creator
 $creatorUserId = $_SESSION['user_id'];
-$roomId = createRoom($creatorUserId, $name, $description, 'public', null, $endDate);
+$challengeId = createChallenge($creatorUserId, $name, $description, 'public', null, $endDate);
 
 ob_end_clean();
 
-if ($roomId) {
-    header('Location: /admin.php?success=Room created successfully');
+if ($challengeId) {
+    header('Location: /admin.php?success=Challenge created successfully');
 } else {
-    header('Location: /admin.php?error=Failed to create room');
+    header('Location: /admin.php?error=Failed to create challenge');
 }
 exit;

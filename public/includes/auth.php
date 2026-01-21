@@ -31,9 +31,16 @@ function authenticateUser($username, $password) {
         return false;
     }
     
-    // Update last login
-    $updateStmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-    $updateStmt->execute([$user['id']]);
+    // Update last login (check if column exists first to be safe, or assume schema is fixed)
+    // We assume schema is fixed for v2.
+    try {
+        $updateStmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
+        $updateStmt->execute([$user['id']]);
+    } catch (PDOException $e) {
+        // Silently fail if column missing (fallback for migration issues)
+        // Log it ideally, but for now just proceed so user can login
+        error_log("Failed to update last_login: " . $e->getMessage());
+    }
     
     return $user;
 }

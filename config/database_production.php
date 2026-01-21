@@ -6,8 +6,8 @@
 
 // Database connection
 define('DB_HOST', 'anandlonkar.ipagemysql.com');
-define('DB_NAME', 'goaltracker_prod');
-define('DB_USER', 'goaltracker_user');
+define('DB_NAME', 'goaltracker_v2');
+define('DB_USER', 'goaltrackeradmin');
 define('DB_PASS', 'Just4Goals!');
 define('DB_CHARSET', 'utf8mb4');
 

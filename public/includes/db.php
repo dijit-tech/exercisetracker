@@ -4,13 +4,16 @@
  */
 
 // Load appropriate config based on environment
-// Check for local config first (deployed in same directory)
 $localConfig = __DIR__ . '/config.php';
-// Check for dev config first (for local development)
 $devConfig = __DIR__ . '/../../config/database_dev.php';
 $prodConfig = __DIR__ . '/../../config/database.php';
 
-if (file_exists($localConfig)) {
+// Check for Docker environment variables first
+if (getenv('DB_HOST')) {
+    require_once __DIR__ . '/config_docker.php';
+}
+// Check for local config first (deployed in same directory)
+elseif (file_exists($localConfig)) {
     require_once $localConfig;
 } elseif (file_exists($devConfig)) {
     require_once $devConfig;
@@ -35,10 +38,13 @@ if (file_exists($localConfig)) {
 
 function getDbConnection() {
     static $pdo = null;
-    
+
     if ($pdo === null) {
         try {
             $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+            // Debug logging
+            error_log("Connecting to DB: Host=" . DB_HOST . ", DB=" . DB_NAME . ", User=" . DB_USER);
+            
             $password = defined('DB_PASSWORD') ? DB_PASSWORD : (defined('DB_PASS') ? DB_PASS : '');
             $pdo = new PDO($dsn, DB_USER, $password, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
