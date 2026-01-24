@@ -513,8 +513,23 @@ function getChallengeInvites($challengeId) {
 function getChallengeLeaderboard($challengeId, $month) {
     $db = getDbConnection();
     
+    // Get challenge dates to constrain the query
+    $challenge = getChallengeById($challengeId);
+    
     $monthStart = $month . '-01';
     $monthEnd = date('Y-m-t', strtotime($monthStart));
+    
+    $queryStart = $monthStart;
+    $queryEnd = $monthEnd;
+    
+    if ($challenge) {
+        if (!empty($challenge['start_date']) && $challenge['start_date'] > $queryStart) {
+            $queryStart = $challenge['start_date'];
+        }
+        if (!empty($challenge['end_date']) && $challenge['end_date'] < $queryEnd) {
+            $queryEnd = $challenge['end_date'];
+        }
+    }
     
     $stmt = $db->prepare("
         SELECT 
@@ -547,7 +562,7 @@ function getChallengeLeaderboard($challengeId, $month) {
         ORDER BY total_points DESC, days_active DESC
     ");
     
-    $stmt->execute([$challengeId, $monthStart, $monthEnd, $challengeId]);
+    $stmt->execute([$challengeId, $queryStart, $queryEnd, $challengeId]);
     $leaderboard = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Add rank
@@ -570,16 +585,33 @@ function getChallengeLeaderboard($challengeId, $month) {
 function getChallengeCompletionPercentage($challengeId, $startDate, $endDate) {
     $db = getDbConnection();
     
+    // Get challenge dates to constrain the query
+    $challenge = getChallengeById($challengeId);
+    
+    $queryStart = $startDate;
+    $queryEnd = $endDate;
+    
+    if ($challenge) {
+        if (!empty($challenge['start_date']) && $challenge['start_date'] > $queryStart) {
+            $queryStart = $challenge['start_date'];
+        }
+        if (!empty($challenge['end_date']) && $challenge['end_date'] < $queryEnd) {
+            $queryEnd = $challenge['end_date'];
+        }
+    }
+    
     $stmt = $db->prepare("
         SELECT 
             gl.log_date,
             gl.user_id,
             u.username,
             COUNT(gl.id) as completed_goals,
+            GROUP_CONCAT(CONCAT(g.goal_title, '::', g.goal_category) SEPARATOR '||') as completed_titles,
             total.total_goals,
             ROUND(COUNT(gl.id) * 100.0 / total.total_goals, 0) as percentage
         FROM goal_logs gl
         JOIN users u ON u.id = gl.user_id
+        JOIN goals g ON gl.goal_id = g.id
         JOIN (
             SELECT user_id, COUNT(DISTINCT goal_id) as total_goals
             FROM challenge_goals
@@ -593,7 +625,7 @@ function getChallengeCompletionPercentage($challengeId, $startDate, $endDate) {
         ORDER BY gl.log_date, gl.user_id
     ");
     
-    $stmt->execute([$challengeId, $challengeId, $startDate, $endDate]);
+    $stmt->execute([$challengeId, $challengeId, $queryStart, $queryEnd]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Restructure as [date][user_id] = data
@@ -606,7 +638,8 @@ function getChallengeCompletionPercentage($challengeId, $startDate, $endDate) {
             'username' => $row['username'],
             'total_goals' => $row['total_goals'],
             'completed_goals' => $row['completed_goals'],
-            'percentage' => $row['percentage']
+            'percentage' => $row['percentage'],
+            'completed_titles' => $row['completed_titles'] ?? ''
         ];
     }
     

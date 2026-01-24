@@ -56,6 +56,19 @@ $completionData = getChallengeCompletionPercentage($challengeId, $monthStart, $m
 // Generate date range
 $startDate = new DateTime($monthStart);
 $endDate = new DateTime($monthEnd);
+
+// Restrict to challenge dates if they exist
+if (!empty($challenge['start_date']) && $challenge['start_date'] > $monthStart) {
+    if ($challenge['start_date'] <= $monthEnd) {
+        $startDate = new DateTime($challenge['start_date']);
+    }
+}
+if (!empty($challenge['end_date']) && $challenge['end_date'] < $monthEnd) {
+    if ($challenge['end_date'] >= $monthStart) {
+        $endDate = new DateTime($challenge['end_date']);
+    }
+}
+
 $dateRange = [];
 for ($date = clone $startDate; $date <= $endDate; $date->modify('+1 day')) {
     $dateRange[] = $date->format('Y-m-d');
@@ -253,7 +266,7 @@ $pageTitle = htmlspecialchars($challenge['name']);
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/dashboard.php">ðŸŽ¯ Goal Tracker</a>
+            <a class="navbar-brand" href="/dashboard.php">🎯 Goal Tracker</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -398,8 +411,25 @@ $pageTitle = htmlspecialchars($challenge['name']);
                                                  ($dayData['total_goals'] ?? 0) . ' goals (' . 
                                                  $percentage . '%)';
                                         
-                                        // We don't have detailed logs in getChallengeCompletionPercentage yet, so just pass empty
-                                        $logsJson = '[]'; // Future improvement: fetch logs details
+                                        // Parse completed titles for logs
+                                        $logsForJson = [];
+                                        if (!empty($dayData['completed_titles'])) {
+                                            $entries = explode('||', $dayData['completed_titles']);
+                                            foreach ($entries as $entry) {
+                                                $parts = explode('::', $entry);
+                                                $goalTitle = $parts[0] ?? 'Goal';
+                                                $goalCategory = $parts[1] ?? 'General';
+                                                
+                                                $logsForJson[] = [
+                                                    'goal_title' => $goalTitle, 
+                                                    'completed' => true, 
+                                                    'goal_category' => $goalCategory, 
+                                                    'notes' => ''
+                                                ];
+                                            }
+                                        }
+                                        
+                                        $logsJson = json_encode($logsForJson);
                                         $usernameSafe = htmlspecialchars($userData['username']);
                                         
                                         echo '<div class="track-block ' . $colorClass . '" 

@@ -615,7 +615,9 @@ function getGoalsWithStatsGroupedByRoom($userId) {
             g.*,
             c.id as room_id,
             c.name as room_name,
-            c.category as room_category
+            c.category as room_category,
+            c.start_date as room_start_date,
+            c.end_date as room_end_date
         FROM goals g
         LEFT JOIN challenge_goals cg ON g.id = cg.goal_id
         LEFT JOIN challenges c ON cg.challenge_id = c.id
@@ -628,10 +630,61 @@ function getGoalsWithStatsGroupedByRoom($userId) {
     $grouped = [];
     
     foreach ($rawGoals as $goal) {
-        // Calculate stats (same as getGoalsWithStats)
-        $goal['current_streak'] = calculateCurrentStreak($goal['id']);
-        $goal['longest_streak'] = calculateLongestStreak($goal['id']);
-        $goal['total_completed'] = getTotalCompletedDays($goal['id']);
+        $roomId = $goal['room_id'] ?: 0;
+        
+        // Calculate stats - Context Aware
+        if ($roomId > 0 && ($goal['room_start_date'] || $goal['room_end_date'])) {
+            // Challenge specific stats - scoped to dates
+            $startDate = $goal['room_start_date'] ?: '1970-01-01';
+            $endDate = $goal['room_end_date'] ?: '2099-12-31';
+            
+            // Total completed within range
+            $countStmt = $db->prepare("SELECT COUNT(*) FROM goal_logs WHERE goal_id = ? AND completed = 1 AND log_date >= ? AND log_date <= ?");
+            $countStmt->execute([$goal['id'], $startDate, $endDate]);
+            $goal['total_completed'] = $countStmt->fetchColumn();
+            
+            // Percentage Completion (based on total days in challenge)
+            // If end date is future, this is "current progress" vs "total potential"
+            // The user requested: "Jan-first-half... based on 100% completion" (implies relative to total duration)
+            if($goal['room_start_date'] && $goal['room_end_date']) {
+                $start = new DateTime($goal['room_start_date']);
+                $end = new DateTime($goal['room_end_date']);
+                $diff = $start->diff($end);
+                $totalDays = $diff->days + 1; // Inclusive (1st to 15th = 15 days)
+                
+                $goal['completion_percentage'] = min(100, round(($goal['total_completed'] / max(1, $totalDays)) * 100));
+                $goal['total_possible_days'] = $totalDays;
+            } else {
+                 $goal['completion_percentage'] = 0;
+            }
+            
+            // Current Streak within range (simplified: consecutive days ending today, bounded by start)
+            // Note: If today is outside range (e.g. challenge ended), streak calculation might be moot or frozen. 
+            // For now, we stick to standard calculation but respect start date.
+            $goal['current_streak'] = calculateCurrentStreak($goal['id']); // Standard logic for now
+            
+        } else {
+            // Standard Global Stats
+            $goal['current_streak'] = calculateCurrentStreak($goal['id']);
+            $goal['longest_streak'] = calculateLongestStreak($goal['id']);
+            $goal['total_completed'] = getTotalCompletedDays($goal['id']);
+            
+            // Global Percentage (if goal has end date)
+             if($goal['start_date'] && $goal['end_date']) {
+                $start = new DateTime($goal['start_date']);
+                $end = new DateTime($goal['end_date']);
+                $diff = $start->diff($end);
+                $totalDays = $diff->days + 1;
+                
+                $goal['completion_percentage'] = min(100, round(($goal['total_completed'] / max(1, $totalDays)) * 100));
+                $goal['total_possible_days'] = $totalDays;
+            } else {
+                 // If no end date, maybe base it on "Yearly"? User said "whole year".
+                 // For now, let's leave as null or handle in UI.
+                 $goal['completion_percentage'] = null;
+            }
+        }
+        
         $goal['success_rate'] = getSuccessRate($goal['id'], 7);
         
         // Check if completed today
@@ -650,13 +703,14 @@ function getGoalsWithStatsGroupedByRoom($userId) {
         }
         
         // Grouping
-        $roomId = $goal['room_id'] ?: 0;
         $roomName = $goal['room_name'] ?: 'Personal Goals';
         
         if (!isset($grouped[$roomId])) {
             $grouped[$roomId] = [
                 'room_id' => $roomId,
                 'room_name' => $roomName,
+                'start_date' => $goal['room_start_date'],
+                'end_date' => $goal['room_end_date'],
                 'goals' => []
             ];
         }

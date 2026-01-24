@@ -63,7 +63,7 @@ $success = $_GET['success'] ?? '';
         <div class="login-container">
             <div class="card">
                 <div class="card-header text-center">
-                    <h3 class="mb-0">� Goal Tracker</h3>
+                    <h3 class="mb-0">🎯 Goal Tracker</h3>
                     <p class="mb-0 mt-2"><small>Set goals. Track progress. Succeed.</small></p>
                 </div>
                 <div class="card-body p-4">

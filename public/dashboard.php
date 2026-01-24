@@ -369,6 +369,12 @@ unset($group);
                 <h5 class="mb-0">
                     <?php if($roomGroup['room_id']): ?>
                         <i class="bi bi-trophy"></i> <?= $roomName ?>
+                        <?php if(!empty($roomGroup['start_date']) && !empty($roomGroup['end_date'])): ?>
+                             <br><small class="text-white-50" style="font-size: 0.6em;">
+                                <i class="bi bi-calendar-event"></i> 
+                                <?= date('M j, Y', strtotime($roomGroup['start_date'])) ?> - <?= date('M j, Y', strtotime($roomGroup['end_date'])) ?>
+                             </small>
+                        <?php endif; ?>
                     <?php else: ?>
                         <i class="bi bi-person"></i> <?= $roomName ?>
                     <?php endif; ?>
@@ -401,6 +407,27 @@ unset($group);
                                                         <?php endif; ?>
                                                     </div>
                                                     
+                                                    <!-- Completion Percentage Bar (Challenge Context) -->
+                                                    <?php if(isset($goal['completion_percentage']) && $goal['completion_percentage'] !== null): ?>
+                                                    <div class="mb-2">
+                                                        <div class="d-flex justify-content-between small text-muted mb-1">
+                                                            <span>Completion</span>
+                                                            <!-- Show days if available -->
+                                                            <?php if(isset($goal['total_possible_days'])): ?>
+                                                                <span><?= $goal['total_completed'] ?> / <?= $goal['total_possible_days'] ?> days</span>
+                                                            <?php else: ?>
+                                                                <span><?= $goal['completion_percentage'] ?>%</span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <div class="progress" style="height: 6px;">
+                                                            <div class="progress-bar bg-info" role="progressbar" 
+                                                                 style="width: <?= $goal['completion_percentage'] ?>%" 
+                                                                 aria-valuenow="<?= $goal['completion_percentage'] ?>" 
+                                                                 aria-valuemin="0" aria-valuemax="100"></div>
+                                                        </div>
+                                                    </div>
+                                                    <?php endif; ?>
+
                                                     <span class="category-badge"><?= htmlspecialchars($goal['goal_category']) ?></span>
                                                     
                                                     <div class="mt-3">
