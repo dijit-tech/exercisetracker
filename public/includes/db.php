@@ -49,13 +49,18 @@ function getDbConnection() {
         if (isset($_SESSION['is_guest']) && $_SESSION['is_guest'] === true && isset($_SESSION['guest_db_path'])) {
              // SQLite Connection for Guest
              try {
-                 $pdo = new PDO("sqlite:" . $_SESSION['guest_db_path']);
-                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                 // Initialize functions for SQLite compatibility if needed
-                 // e.g., MySQL's NOW() -> SQLite's datetime('now')?
-                 // Most simpler queries are compatible.
+                 // Check if we need the wrapper or native PDO
+                 if (in_array('sqlite', PDO::getAvailableDrivers())) {
+                     $pdo = new PDO("sqlite:" . $_SESSION['guest_db_path']);
+                     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                 } elseif (extension_loaded('sqlite3')) {
+                     require_once __DIR__ . '/pdo_sqlite3_wrapper.php';
+                     $pdo = new PdoSqlite3Wrapper($_SESSION['guest_db_path']);
+                 } else {
+                     die("Guest Database Error: No SQLite driver available");
+                 }
                  return $pdo;
-             } catch (PDOException $e) {
+             } catch (Exception $e) {
                  die("Guest Database Error: " . $e->getMessage());
              }
         }

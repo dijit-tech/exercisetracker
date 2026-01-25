@@ -19,8 +19,19 @@ function initGuestDb($sessionId) {
     $cleanupOldStats = cleanupOldGuestDbs(); // Run cleanup
     
     try {
-        $db = new PDO("sqlite:$dbPath");
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db = null;
+        // Check for PDO SQLite driver
+        if (in_array('sqlite', PDO::getAvailableDrivers())) {
+            $db = new PDO("sqlite:$dbPath");
+            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } 
+        // Fallback to SQLite3 Wrapper if native extension exists
+        elseif (extension_loaded('sqlite3')) {
+            require_once __DIR__ . '/pdo_sqlite3_wrapper.php';
+            $db = new PdoSqlite3Wrapper($dbPath);
+        } else {
+            throw new Exception("No SQLite driver available (pdo_sqlite or sqlite3)");
+        }
         
         // 1. Create Schema (SQLite Compatible)
         
@@ -171,7 +182,7 @@ function initGuestDb($sessionId) {
         
         return $userId;
         
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         die("Guest DB Init Error: " . $e->getMessage());
     }
 }
