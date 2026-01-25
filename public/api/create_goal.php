@@ -69,13 +69,15 @@ try {
             // Create default on the fly
              require_once __DIR__ . '/../includes/challenges.php';
              // Manual insert to set is_default=1
+             $timestamp = date('Y-m-d H:i:s');
+             $category = 'Personal';
              $stmt = $db->prepare("
-                INSERT INTO challenges (creator_user_id, name, description, privacy, status, is_default, created_at)
-                VALUES (?, ?, ?, 'private', 'active', 1, NOW())
+                INSERT INTO challenges (creator_user_id, name, description, category, privacy, status, is_default, created_at)
+                VALUES (?, ?, ?, ?, 'private', 'active', 1, ?)
             ");
             $name = $_SESSION['username'] . "'s Personal Goals";
             $desc = "Default personal workspace";
-            $stmt->execute([$userId, $name, $desc]);
+            $stmt->execute([$userId, $name, $desc, $category, $timestamp]);
             $challengeId = $db->lastInsertId();
             addChallengeMember($challengeId, $userId);
         }

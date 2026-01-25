@@ -142,11 +142,21 @@ function deleteChallenge($challengeId) {
 function addChallengeMember($challengeId, $userId) {
     $db = getDbConnection();
     
-    $stmt = $db->prepare("
-        INSERT INTO challenge_members (challenge_id, user_id, status)
-        VALUES (?, ?, 'active')
-        ON DUPLICATE KEY UPDATE status = 'active', joined_at = CURRENT_TIMESTAMP
-    ");
+    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    
+    if ($driver === 'sqlite') {
+        $stmt = $db->prepare("
+            INSERT INTO challenge_members (challenge_id, user_id, status)
+            VALUES (?, ?, 'active')
+            ON CONFLICT(challenge_id, user_id) DO UPDATE SET status = 'active', joined_at = CURRENT_TIMESTAMP
+        ");
+    } else {
+        $stmt = $db->prepare("
+            INSERT INTO challenge_members (challenge_id, user_id, status)
+            VALUES (?, ?, 'active')
+            ON DUPLICATE KEY UPDATE status = 'active', joined_at = CURRENT_TIMESTAMP
+        ");
+    }
     
     $stmt->execute([$challengeId, $userId]);
     return $stmt->rowCount() > 0;
@@ -286,11 +296,21 @@ function addGoalToChallenge($challengeId, $goalId, $userId) {
         return false;
     }
     
-    $stmt = $db->prepare("
-        INSERT INTO challenge_goals (challenge_id, goal_id, user_id)
-        VALUES (?, ?, ?)
-        ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
-    ");
+    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+    if ($driver === 'sqlite') {
+        $stmt = $db->prepare("
+            INSERT INTO challenge_goals (challenge_id, goal_id, user_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(challenge_id, goal_id) DO UPDATE SET added_at = CURRENT_TIMESTAMP
+        ");
+    } else {
+        $stmt = $db->prepare("
+            INSERT INTO challenge_goals (challenge_id, goal_id, user_id)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE added_at = CURRENT_TIMESTAMP
+        ");
+    }
     
     $stmt->execute([$challengeId, $goalId, $userId]);
     return $stmt->rowCount() > 0;
@@ -600,30 +620,59 @@ function getChallengeCompletionPercentage($challengeId, $startDate, $endDate) {
         }
     }
     
-    $stmt = $db->prepare("
-        SELECT 
-            gl.log_date,
-            gl.user_id,
-            u.username,
-            COUNT(gl.id) as completed_goals,
-            GROUP_CONCAT(CONCAT(g.goal_title, '::', g.goal_category) SEPARATOR '||') as completed_titles,
-            total.total_goals,
-            ROUND(COUNT(gl.id) * 100.0 / total.total_goals, 0) as percentage
-        FROM goal_logs gl
-        JOIN users u ON u.id = gl.user_id
-        JOIN goals g ON gl.goal_id = g.id
-        JOIN (
-            SELECT user_id, COUNT(DISTINCT goal_id) as total_goals
-            FROM challenge_goals
-            WHERE challenge_id = ?
-            GROUP BY user_id
-        ) total ON total.user_id = gl.user_id
-        WHERE gl.goal_id IN (SELECT goal_id FROM challenge_goals WHERE challenge_id = ?)
-          AND gl.log_date BETWEEN ? AND ?
-          AND gl.completed = TRUE
-        GROUP BY gl.log_date, gl.user_id, u.username, total.total_goals
-        ORDER BY gl.log_date, gl.user_id
-    ");
+    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    
+    if ($driver === 'sqlite') {
+        $stmt = $db->prepare("
+            SELECT 
+                gl.log_date,
+                gl.user_id,
+                u.username,
+                COUNT(gl.id) as completed_goals,
+                GROUP_CONCAT(g.goal_title || '::' || g.goal_category, '||') as completed_titles,
+                total.total_goals,
+                ROUND(COUNT(gl.id) * 100.0 / total.total_goals, 0) as percentage
+            FROM goal_logs gl
+            JOIN users u ON u.id = gl.user_id
+            JOIN goals g ON gl.goal_id = g.id
+            JOIN (
+                SELECT user_id, COUNT(DISTINCT goal_id) as total_goals
+                FROM challenge_goals
+                WHERE challenge_id = ?
+                GROUP BY user_id
+            ) total ON total.user_id = gl.user_id
+            WHERE gl.goal_id IN (SELECT goal_id FROM challenge_goals WHERE challenge_id = ?)
+              AND gl.log_date BETWEEN ? AND ?
+              AND gl.completed = 1
+            GROUP BY gl.log_date, gl.user_id, u.username, total.total_goals
+            ORDER BY gl.log_date, gl.user_id
+        ");
+    } else {
+        $stmt = $db->prepare("
+            SELECT 
+                gl.log_date,
+                gl.user_id,
+                u.username,
+                COUNT(gl.id) as completed_goals,
+                GROUP_CONCAT(CONCAT(g.goal_title, '::', g.goal_category) SEPARATOR '||') as completed_titles,
+                total.total_goals,
+                ROUND(COUNT(gl.id) * 100.0 / total.total_goals, 0) as percentage
+            FROM goal_logs gl
+            JOIN users u ON u.id = gl.user_id
+            JOIN goals g ON gl.goal_id = g.id
+            JOIN (
+                SELECT user_id, COUNT(DISTINCT goal_id) as total_goals
+                FROM challenge_goals
+                WHERE challenge_id = ?
+                GROUP BY user_id
+            ) total ON total.user_id = gl.user_id
+            WHERE gl.goal_id IN (SELECT goal_id FROM challenge_goals WHERE challenge_id = ?)
+              AND gl.log_date BETWEEN ? AND ?
+              AND gl.completed = TRUE
+            GROUP BY gl.log_date, gl.user_id, u.username, total.total_goals
+            ORDER BY gl.log_date, gl.user_id
+        ");
+    }
     
     $stmt->execute([$challengeId, $challengeId, $queryStart, $queryEnd]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);

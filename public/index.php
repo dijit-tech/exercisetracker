@@ -92,10 +92,17 @@ $success = $_GET['success'] ?? '';
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
                         
-                        <div class="d-grid">
+                        <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                            <a href="/api/guest_login.php" class="btn btn-outline-secondary">
+                                <i class="bi bi-rocket-takeoff"></i> Try Demo (Guest Mode)
+                            </a>
                         </div>
                     </form>
+                    
+                    <div class="mt-3 text-center small text-muted">
+                        Guest mode data is temporary and resets daily.
+                    </div>
                     
                     <hr class="my-4">
                     

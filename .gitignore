@@ -19,3 +19,5 @@ public/check_includes.php
 public/api/debug_tables.php
 hello.php
 index.php
+
+public/sessions/

@@ -201,15 +201,30 @@ function getArchivedGoals($userId) {
 function logGoalCompletion($goalId, $userId, $logDate, $completed = true, $notes = null) {
     $db = getDbConnection();
     
-    // Use INSERT ... ON DUPLICATE KEY UPDATE to handle existing logs
-    $stmt = $db->prepare("
-        INSERT INTO goal_logs (goal_id, user_id, log_date, completed, notes)
-        VALUES (?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE 
-            completed = VALUES(completed),
-            notes = VALUES(notes),
-            updated_at = CURRENT_TIMESTAMP
-    ");
+    // Check driver to handle SQL syntax differences
+    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    
+    if ($driver === 'sqlite') {
+        // SQLite syntax
+        $stmt = $db->prepare("
+            INSERT INTO goal_logs (goal_id, user_id, log_date, completed, notes)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(goal_id, log_date) DO UPDATE SET 
+                completed = excluded.completed,
+                notes = excluded.notes,
+                updated_at = CURRENT_TIMESTAMP
+        ");
+    } else {
+        // MySQL syntax
+        $stmt = $db->prepare("
+            INSERT INTO goal_logs (goal_id, user_id, log_date, completed, notes)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                completed = VALUES(completed),
+                notes = VALUES(notes),
+                updated_at = CURRENT_TIMESTAMP
+        ");
+    }
     
     return $stmt->execute([$goalId, $userId, $logDate, $completed, $notes]);
 }

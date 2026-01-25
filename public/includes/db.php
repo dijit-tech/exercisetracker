@@ -40,6 +40,27 @@ function getDbConnection() {
     static $pdo = null;
 
     if ($pdo === null) {
+        // GUEST MODE CHECK
+        if (session_status() === PHP_SESSION_NONE) {
+            // Slight overhead to check session if not started, but usually handled by caller
+            // In pure API calls might need session_start()
+        }
+        
+        if (isset($_SESSION['is_guest']) && $_SESSION['is_guest'] === true && isset($_SESSION['guest_db_path'])) {
+             // SQLite Connection for Guest
+             try {
+                 $pdo = new PDO("sqlite:" . $_SESSION['guest_db_path']);
+                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                 // Initialize functions for SQLite compatibility if needed
+                 // e.g., MySQL's NOW() -> SQLite's datetime('now')?
+                 // Most simpler queries are compatible.
+                 return $pdo;
+             } catch (PDOException $e) {
+                 die("Guest Database Error: " . $e->getMessage());
+             }
+        }
+
+        // STANDARD MYSQL CONNECTION
         try {
             $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             // Debug logging

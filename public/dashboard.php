@@ -18,7 +18,16 @@ $isAdmin = isAdmin();
 $userId = getCurrentUserId();
 
 // Get Pending Invites count
-$pendingInvites = getUserPendingInvites($userId);
+try {
+    $pendingInvites = getUserPendingInvites($userId);
+} catch (PDOException $e) {
+    // Self-healing for Guest Mode schema mismatches
+    if (isset($_SESSION['is_guest']) && $_SESSION['is_guest'] && strpos($e->getMessage(), 'no such column') !== false) {
+        header("Location: /api/logout.php");
+        exit;
+    }
+    throw $e;
+}
 $pendingInvitesCount = count($pendingInvites);
 
 // Get goal stats
@@ -309,6 +318,16 @@ unset($group);
 
     <!-- Main Content -->
     <div class="container mt-4">
+        <?php if (isset($_SESSION['is_guest']) && $_SESSION['is_guest']): ?>
+        <div class="alert alert-warning alert-dismissible fade show mb-4 border-warning shadow-sm" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Guest Mode Active:</strong> You are using a temporary demo account. 
+            All data will be automatically deleted after 24 hours. 
+            <a href="/api/logout.php" class="alert-link">Sign up</a> to save your progress permanently.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <?php endif; ?>
+
         <?php if ($pendingInvitesCount > 0): ?>
         <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
             <i class="bi bi-envelope-exclamation-fill me-2"></i>
