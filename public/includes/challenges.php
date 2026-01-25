@@ -296,7 +296,15 @@ function addGoalToChallenge($challengeId, $goalId, $userId) {
         return false;
     }
     
-    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    // Check if using our Custom Wrapper (getAttribute might not be implemented fully or return null)
+    $driver = 'sqlite'; // Default assumption for wrapper
+    try {
+        if ($db instanceof PDO) {
+            $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        }
+    } catch (Exception $e) {
+        // Ignore, stick to default
+    }
 
     if ($driver === 'sqlite') {
         $stmt = $db->prepare("
