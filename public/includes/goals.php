@@ -202,7 +202,15 @@ function logGoalCompletion($goalId, $userId, $logDate, $completed = true, $notes
     $db = getDbConnection();
     
     // Check driver to handle SQL syntax differences
-    $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+    // Check if using our Custom Wrapper (getAttribute might not be implemented fully or return null)
+    $driver = 'sqlite'; // Default assumption for wrapper
+    try {
+        if ($db instanceof PDO) {
+            $driver = $db->getAttribute(PDO::ATTR_DRIVER_NAME);
+        }
+    } catch (Exception $e) {
+        // Ignore, stick to default
+    }
     
     if ($driver === 'sqlite') {
         // SQLite syntax
