@@ -40,6 +40,15 @@ $posts = getChallengePosts($challengeId, 50);
 
 // Get current month leaderboard
 $currentMonth = isset($_GET['month']) ? $_GET['month'] : date('Y-m');
+
+// If accessing without specific month, and challenge has ended, default to the end-date month
+if (!isset($_GET['month']) && !empty($challenge['end_date'])) {
+    $challengeEndMonth = date('Y-m', strtotime($challenge['end_date']));
+    if ($currentMonth > $challengeEndMonth) {
+        $currentMonth = $challengeEndMonth;
+    }
+}
+
 // Determine start/end of month
 $monthDate = new DateTime($currentMonth . '-01');
 $monthStart = $monthDate->format('Y-m-01');
@@ -49,6 +58,26 @@ $monthName = $monthDate->format('F Y');
 // Calculate previous and next month
 $prevMonth = (clone $monthDate)->modify('-1 month')->format('Y-m');
 $nextMonth = (clone $monthDate)->modify('+1 month')->format('Y-m');
+
+// Navigation visibility
+$showPrev = true;
+if (!empty($challenge['start_date'])) {
+    $challengeStartMonth = date('Y-m', strtotime($challenge['start_date']));
+    if ($currentMonth <= $challengeStartMonth) {
+        $showPrev = false;
+    }
+}
+
+$showNext = true;
+if (!empty($challenge['end_date'])) {
+    $challengeEndMonth = date('Y-m', strtotime($challenge['end_date']));
+    if ($currentMonth >= $challengeEndMonth) {
+        $showNext = false;
+    }
+} elseif ($nextMonth > date('Y-m', strtotime('+1 month'))) {
+     // Optional: Prevents scrolling infinitely into future for ongoing challenges? 
+     // Requirement only asked for "past their end date". So I'll stick to that.
+}
 
 // Get completion data for race track
 $completionData = getChallengeCompletionPercentage($challengeId, $monthStart, $monthEnd);
@@ -351,11 +380,11 @@ $pageTitle = htmlspecialchars($challenge['name']);
                     <div class="card-header d-flex justify-content-between align-items-center bg-secondary text-white">
                         <h5 class="mb-0"><i class="bi bi-trophy-fill"></i> Leaderboard</h5>
                         <div class="d-flex align-items-center">
-                            <button class="btn btn-sm btn-light me-2" onclick="window.location.search='?id=<?= $challengeId ?>&month=<?= $prevMonth ?>'">
+                            <button class="btn btn-sm btn-light me-2" onclick="window.location.search='?id=<?= $challengeId ?>&month=<?= $prevMonth ?>'" <?= $showPrev ? '' : 'disabled' ?>>
                                 <i class="bi bi-chevron-left"></i>
                             </button>
                             <span class="fw-bold"><?= $monthName ?></span>
-                            <button class="btn btn-sm btn-light ms-2" onclick="window.location.search='?id=<?= $challengeId ?>&month=<?= $nextMonth ?>'">
+                            <button class="btn btn-sm btn-light ms-2" onclick="window.location.search='?id=<?= $challengeId ?>&month=<?= $nextMonth ?>'" <?= $showNext ? '' : 'disabled' ?>>
                                 <i class="bi bi-chevron-right"></i>
                             </button>
                         </div>
