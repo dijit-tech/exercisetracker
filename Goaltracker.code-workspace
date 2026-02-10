@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"powershell.cwd": "exercisetracker_fresh_20260105"
+	}
+}

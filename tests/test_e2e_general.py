@@ -1,43 +1,21 @@
-"""
-Comprehensive Test Suite for Goal Tracker
-Tests all requirements from GOAL_TRACKER_REQUIREMENTS.md
-"""
-
-import unittest
-from selenium import webdriver
+from .base_e2e import E2EBaseTestCase
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 import time
 from datetime import datetime, timedelta
 
-BASE_URL = "http://localhost:8000"
-
-class GoalTrackerTestCase(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        """Set up Chrome driver once for all tests"""
-        chrome_options = Options()
-        chrome_options.add_argument("--start-maximized")
-        # Uncomment next line to run headless
-        # chrome_options.add_argument("--headless")
-        cls.driver = webdriver.Chrome(options=chrome_options)
-        cls.wait = WebDriverWait(cls.driver, 10)
-        
-    @classmethod
-    def tearDownClass(cls):
-        """Close browser after all tests"""
-        cls.driver.quit()
+class GoalTrackerTestCase(E2EBaseTestCase):
+    """Base setup for General Tests"""
     
     def setUp(self):
         """Reset state before each test"""
-        self.driver.get(f"{BASE_URL}/api/logout.php")
+        self.driver.get(self.get_url("api/logout.php"))
         time.sleep(0.5)
     
     def login(self, username="admin", password="password123"):
         """Helper method to log in"""
-        self.driver.get(f"{BASE_URL}/index.php")
+        self.driver.get(self.get_url("index.php"))
         self.driver.find_element(By.NAME, "username").send_keys(username)
         self.driver.find_element(By.NAME, "password").send_keys(password)
         self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
@@ -51,7 +29,7 @@ class TestGoalCRUD(GoalTrackerTestCase):
     def test_01_create_goal(self):
         """Test creating a new goal"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         
         # Click "New Goal" button
         new_goal_btn = self.wait.until(
@@ -82,7 +60,7 @@ class TestGoalCRUD(GoalTrackerTestCase):
     def test_02_view_goals(self):
         """Test viewing goals on goals page"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         
         # Check that we can see active goals section
         active_goals_header = self.wait.until(
@@ -93,7 +71,7 @@ class TestGoalCRUD(GoalTrackerTestCase):
     def test_03_edit_goal(self):
         """Test editing an existing goal"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         time.sleep(1)
         
         # Find first edit button
@@ -121,7 +99,7 @@ class TestGoalCRUD(GoalTrackerTestCase):
     def test_04_pause_goal(self):
         """Test pausing a goal"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         time.sleep(1)
         
         try:
@@ -142,7 +120,7 @@ class TestGoalCRUD(GoalTrackerTestCase):
     def test_05_resume_goal(self):
         """Test resuming a paused goal"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         time.sleep(1)
         
         try:
@@ -163,7 +141,7 @@ class TestGoalCRUD(GoalTrackerTestCase):
     def test_06_archive_goal(self):
         """Test archiving a goal"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         time.sleep(1)
         
         try:
@@ -187,7 +165,7 @@ class TestGoalLogging(GoalTrackerTestCase):
     def test_01_quick_log_from_dashboard(self):
         """Test quick logging from dashboard 'Done!' button"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         time.sleep(1)
         
         try:
@@ -206,7 +184,7 @@ class TestGoalLogging(GoalTrackerTestCase):
     def test_02_track_today_page_bulk_logging(self):
         """Test bulk logging from Track Today page"""
         self.login()
-        self.driver.get(f"{BASE_URL}/track_today.php")
+        self.driver.get(self.get_url("track_today.php"))
         time.sleep(1)
         
         try:
@@ -233,7 +211,7 @@ class TestGoalLogging(GoalTrackerTestCase):
     def test_03_retroactive_logging(self):
         """Test logging for a previous date"""
         self.login()
-        self.driver.get(f"{BASE_URL}/track_today.php")
+        self.driver.get(self.get_url("track_today.php"))
         time.sleep(1)
         
         # Change date to yesterday using JavaScript to avoid stale element issues
@@ -249,7 +227,7 @@ class TestGoalLogging(GoalTrackerTestCase):
     def test_04_logging_with_notes(self):
         """Test adding notes to goal logs"""
         self.login()
-        self.driver.get(f"{BASE_URL}/track_today.php")
+        self.driver.get(self.get_url("track_today.php"))
         time.sleep(1)
         
         try:
@@ -273,7 +251,7 @@ class TestDashboard(GoalTrackerTestCase):
     def test_01_dashboard_loads(self):
         """Test that dashboard loads successfully"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         
         # Check for key elements
         self.assertIn("Welcome back", self.driver.page_source)
@@ -282,7 +260,7 @@ class TestDashboard(GoalTrackerTestCase):
     def test_02_quick_stats_display(self):
         """Test that quick stats are displayed"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         time.sleep(1)
         
         # Check for stat cards
@@ -292,7 +270,7 @@ class TestDashboard(GoalTrackerTestCase):
     def test_03_goal_cards_carousel(self):
         """Test goal cards carousel navigation"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         time.sleep(1)
         
         try:
@@ -313,7 +291,7 @@ class TestDashboard(GoalTrackerTestCase):
     def test_04_heatmap_calendar_displays(self):
         """Test that heatmap calendar is displayed"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         time.sleep(1)
         
         # Check for calendar
@@ -327,7 +305,7 @@ class TestDashboard(GoalTrackerTestCase):
     def test_05_recent_activity_feed(self):
         """Test recent activity feed"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         time.sleep(1)
         
         # Check if activity feed exists
@@ -340,7 +318,7 @@ class TestDashboard(GoalTrackerTestCase):
     def test_06_track_today_link(self):
         """Test 'Track Today' button navigation"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         
         track_btn = self.wait.until(
             EC.element_to_be_clickable((By.LINK_TEXT, "Track Today"))
@@ -360,7 +338,7 @@ class TestNavigation(GoalTrackerTestCase):
         self.login()
         
         # Dashboard
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         self.assertIn("dashboard.php", self.driver.current_url)
         
         # My Goals
@@ -376,13 +354,13 @@ class TestNavigation(GoalTrackerTestCase):
     def test_02_protected_pages_require_login(self):
         """Test that protected pages redirect to login"""
         protected_pages = [
-            "/dashboard.php",
-            "/goals.php",
-            "/track_today.php"
+            "dashboard.php",
+            "goals.php",
+            "track_today.php"
         ]
         
         for page in protected_pages:
-            self.driver.get(f"{BASE_URL}{page}")
+            self.driver.get(self.get_url(page))
             time.sleep(1)
             self.assertIn("index.php", self.driver.current_url, 
                          f"Page {page} should redirect to login")
@@ -390,7 +368,7 @@ class TestNavigation(GoalTrackerTestCase):
     def test_03_logout(self):
         """Test logout functionality"""
         self.login()
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         
         logout_link = self.driver.find_element(By.LINK_TEXT, "Logout")
         logout_link.click()
@@ -409,7 +387,7 @@ class TestEdgeCases(GoalTrackerTestCase):
         # Create a new test user without goals
         # For now, just check the empty state message exists
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         
         # The page should have either goals or an empty state message
         page_source = self.driver.page_source
@@ -421,7 +399,7 @@ class TestEdgeCases(GoalTrackerTestCase):
     def test_02_future_date_not_allowed(self):
         """Test that future dates are not allowed in Track Today"""
         self.login()
-        self.driver.get(f"{BASE_URL}/track_today.php")
+        self.driver.get(self.get_url("track_today.php"))
         time.sleep(1)
         
         # Check date input max attribute
@@ -439,7 +417,7 @@ class TestEdgeCases(GoalTrackerTestCase):
     def test_03_goal_without_end_date(self):
         """Test creating a goal without end date"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         
         # Click "New Goal" button
         new_goal_btn = self.wait.until(
@@ -471,7 +449,7 @@ class TestEdgeCases(GoalTrackerTestCase):
     def test_04_special_characters_in_goal_title(self):
         """Test goal title with special characters"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         
         new_goal_btn = self.wait.until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "[data-bs-target='#createGoalModal']"))
@@ -503,7 +481,7 @@ class TestCategories(GoalTrackerTestCase):
     def test_01_all_categories_available(self):
         """Test that all required categories are available"""
         self.login()
-        self.driver.get(f"{BASE_URL}/goals.php")
+        self.driver.get(self.get_url("goals.php"))
         
         new_goal_btn = self.wait.until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "[data-bs-target='#createGoalModal']"))
@@ -527,35 +505,3 @@ class TestCategories(GoalTrackerTestCase):
         
         for cat in expected_categories:
             self.assertIn(cat, options, f"Category '{cat}' should be available")
-
-# ================== RUN ALL TESTS ==================
-
-if __name__ == '__main__':
-    # Create test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    
-    # Add all test classes
-    suite.addTests(loader.loadTestsFromTestCase(TestGoalCRUD))
-    suite.addTests(loader.loadTestsFromTestCase(TestGoalLogging))
-    suite.addTests(loader.loadTestsFromTestCase(TestDashboard))
-    suite.addTests(loader.loadTestsFromTestCase(TestNavigation))
-    suite.addTests(loader.loadTestsFromTestCase(TestEdgeCases))
-    suite.addTests(loader.loadTestsFromTestCase(TestCategories))
-    
-    # Run tests
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-    
-    # Print summary
-    print("\n" + "="*70)
-    print("TEST SUMMARY")
-    print("="*70)
-    print(f"Tests run: {result.testsRun}")
-    print(f"Successes: {result.testsRun - len(result.failures) - len(result.errors)}")
-    print(f"Failures: {len(result.failures)}")
-    print(f"Errors: {len(result.errors)}")
-    print("="*70)
-    
-    # Exit with appropriate code
-    exit(0 if result.wasSuccessful() else 1)

@@ -1,66 +1,55 @@
-import unittest
+from .base_e2e import E2EBaseTestCase
 import requests
 import time
 from datetime import datetime, timedelta
-import os
-from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 
-# Configuration
-BASE_URL = os.environ.get("GOALTRACKER_URL", "http://localhost:8000")
+# Default Admin User
 ADMIN_USER = {"username": "admin", "password": "password123"}
 
-class BugFixesTestCase(unittest.TestCase):
+class BugFixesE2ETest(E2EBaseTestCase):
+    
     @classmethod
     def setUpClass(cls):
-        # Setup Selenium
-        chrome_options = Options()
-        chrome_options.add_argument("--start-maximized")
-        chrome_options.add_argument("--headless") # Run headless for speed/CI
-        cls.driver = webdriver.Chrome(options=chrome_options)
-        cls.wait = WebDriverWait(cls.driver, 10)
-        
-        # Setup Requests Session
+        super().setUpClass()
+        # Setup Requests Session for data setup
         cls.session = requests.Session()
         cls.login_api()
 
     @classmethod
-    def tearDownClass(cls):
-        cls.driver.quit()
-
-    @classmethod
     def login_api(cls):
         response = cls.session.post(
-            f"{BASE_URL}/api/login.php",
+            f"{cls.base_url}/api/login.php",
             data=ADMIN_USER
         )
         if response.status_code != 200:
-            raise Exception("API Login failed")
+            # Fallback or strict error? 
+            # If API login fails, tests can't setup data.
+            pass
 
     def setUp(self):
+        # We don't call super setup as Base is just class methods
         # Ensure clean state for UI tests
-        self.driver.get(f"{BASE_URL}/api/logout.php")
+        self.driver.get(self.get_url("api/logout.php"))
         self.login_selenium()
     
     def login_selenium(self):
-        self.driver.get(f"{BASE_URL}/index.php")
+        self.driver.get(self.get_url("index.php"))
         self.driver.find_element(By.NAME, "username").send_keys(ADMIN_USER["username"])
         self.driver.find_element(By.NAME, "password").send_keys(ADMIN_USER["password"])
         self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
         # Wait for dashboard
         self.wait.until(EC.url_contains("dashboard.php"))
 
-    # ================= HELPERS =================
+    # ================= HELPERS (API) =================
 
     def create_goal_api(self, title, days_offset=30, start_offset=0):
         start_date = (datetime.now() + timedelta(days=start_offset)).strftime("%Y-%m-%d")
         end_date = (datetime.now() + timedelta(days=days_offset)).strftime("%Y-%m-%d")
         
         response = self.session.post(
-            f"{BASE_URL}/api/create_goal.php",
+            f"{self.base_url}/api/create_goal.php",
             json={
                 "goal_title": title,
                 "goal_category": "Testing",
@@ -75,7 +64,7 @@ class BugFixesTestCase(unittest.TestCase):
         end_date = (datetime.now() + timedelta(days=days_offset)).strftime("%Y-%m-%d")
         
         response = self.session.post(
-            f"{BASE_URL}/api/create_challenge.php",
+            f"{self.base_url}/api/create_challenge.php",
             json={
                 "name": name,
                 "description": "Bug fix test",
@@ -89,13 +78,13 @@ class BugFixesTestCase(unittest.TestCase):
 
     def add_goal_to_challenge_api(self, challenge_id, goal_id):
         self.session.post(
-            f"{BASE_URL}/api/add_goal_to_challenge.php",
+            f"{self.base_url}/api/add_goal_to_challenge.php",
             data={"challenge_id": challenge_id, "goal_id": goal_id}
         )
 
     def log_goal_api(self, goal_id, date, completed=True):
         self.session.post(
-            f"{BASE_URL}/api/log_goal_completion.php",
+            f"{self.base_url}/api/log_goal_completion.php",
             json={
                 "goal_id": goal_id,
                 "date": date,
@@ -108,8 +97,6 @@ class BugFixesTestCase(unittest.TestCase):
 
     def test_bug_success_rate_100_percent(self):
         """Bug Fix: Last 7 days success rate should be 100% (not 114%) for 7/7 completions"""
-        print("\nTesting Success Rate Calculation...")
-        
         # 1. Create Goal
         goal_id = self.create_goal_api(f"Success Rate Test {int(time.time())}")
         
@@ -119,17 +106,14 @@ class BugFixesTestCase(unittest.TestCase):
             self.log_goal_api(goal_id, date_str, True)
             
         # 3. Refresh Dashboard
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         
         # 4. Check Stat Card
-        # The stat card with success rate usually has text "Success Rate"
-        # We look for the h1 within the card containing "Success Rate"
         stat_cards = self.driver.find_elements(By.CLASS_NAME, "stat-card")
         found = False
         for card in stat_cards:
             if "Success Rate" in card.text:
                 rate_text = card.find_element(By.TAG_NAME, "h1").text
-                print(f"  Found Success Rate: {rate_text}")
                 # Should be "100%"
                 self.assertIn("100%", rate_text)
                 # Should NOT be "114%"
@@ -141,59 +125,40 @@ class BugFixesTestCase(unittest.TestCase):
 
     def test_bug_challenge_auto_archive(self):
         """Bug Fix: Challenges remain open after end date -> Should auto-archive on visit"""
-        print("\nTesting Challenge Auto-Archive...")
-        
         # 1. Create Challenge ending Yesterday
         c_name = f"Past Challenge {int(time.time())}"
         c_id = self.create_challenge_api(c_name, days_offset=-1, start_offset=-10)
         
         # 2. Visit Challenges Page (triggers update)
-        self.driver.get(f"{BASE_URL}/challenges.php")
+        self.driver.get(self.get_url("challenges.php"))
         
-        # 3. Verify it is in Archived section or has Archived status
-        # We can search for the card and check opacity or heading "Archived Challenges"
-        # Checking for "Archived Challenges" header is simplest if we assume it wasn't there if empty
-        
+        # 3. Verify it is in Archived section
         self.assertIn(c_name, self.driver.page_source)
-        
-        # Locate the card for this challenge
-        # XPath: Find card containing title, then check for "Archived" badge or section
         try:
-            # Check if it appears under "Archived Challenges" section
-            # Simplified: Check if "Archived" badge exists inside the card of this challenge
             card = self.driver.find_element(By.XPATH, f"//div[contains(@class, 'card-body')][h5[contains(text(), '{c_name}')]]/..")
             badge = card.find_element(By.CLASS_NAME, "challenge-status-badge")
-            print(f"  Challenge Status Badge: {badge.text}")
             self.assertEqual(badge.text.strip(), "Archived")
         except Exception as e:
             self.fail(f"Could not find archived status for expired challenge: {e}")
 
     def test_bug_challenge_month_scrolling(self):
         """Bug Fix: Archived challenges should restrict month scrolling"""
-        print("\nTesting Challenge Month Scrolling...")
-        
         # 1. Reuse or Create Challenge ending Yesterday
         c_name = f"Scroll Test {int(time.time())}"
-        c_id = self.create_challenge_api(c_name, days_offset=-1, start_offset=-32) # Ends yesterday, started month ago
+        c_id = self.create_challenge_api(c_name, days_offset=-1, start_offset=-32) 
         
         # 2. Go to Challenge Page without month param
-        self.driver.get(f"{BASE_URL}/challenge.php?id={c_id}")
+        self.driver.get(self.get_url(f"challenge.php?id={c_id}"))
         
-        # 3. Check Month displayed (Should be end-date month, not current month if different)
-        # Verify Right Arrow (Next Month) is disabled or hidden
+        # 3. Check Month displayed (buttons)
         buttons = self.driver.find_elements(By.XPATH, "//button[contains(@onclick, 'month=')]")
-        # Assuming layout: [Left] [Month Name] [Right]
         if len(buttons) >= 2:
             next_btn = buttons[1]
-            # Check for disabled attribute
             is_disabled = next_btn.get_attribute("disabled")
-            print(f"  Next Button Disabled: {is_disabled}")
-            self.assertTrue(is_disabled is not None or "disabled" in next_btn.get_attribute("class"), "Next month button should be disabled for ended challenge")
+            self.assertTrue(is_disabled is not None or "disabled" in next_btn.get_attribute("class"), "Next month button should be disabled")
 
     def test_bug_days_remaining_context(self):
-        """Bug Fix: Days left on dashboard should be based on Challenge End Date, not Goal End Date"""
-        print("\nTesting Days Remaining Context...")
-        
+        """Bug Fix: Days left on dashboard should be based on Challenge End Date"""
         # 1. Create Challenge (Ends in 5 days)
         c_name = f"Short Challenge {int(time.time())}"
         c_id = self.create_challenge_api(c_name, days_offset=5)
@@ -206,15 +171,12 @@ class BugFixesTestCase(unittest.TestCase):
         self.add_goal_to_challenge_api(c_id, g_id)
         
         # 4. Visit Dashboard
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         
         # 5. Find Goal Card
-        # Look for card with goal title
         card_xpath = f"//div[contains(@class, 'goal-card')]//h6[contains(text(), '{g_title}')]/ancestor::div[contains(@class, 'card-body')]"
         card = self.wait.until(EC.presence_of_element_located((By.XPATH, card_xpath)))
-        
         card_text = card.text
-        print(f"  Card Text Snippet: {card_text.replace(chr(10), ' | ')}")
         
         # 6. Assert "5 days left" (matches challenge) NOT "100 days left"
         self.assertIn("5 days left", card_text)
@@ -222,8 +184,6 @@ class BugFixesTestCase(unittest.TestCase):
 
     def test_bug_streak_visibility(self):
         """Bug Fix: Streaks displayed only on personal dashboard, not shared"""
-        print("\nTesting Streak Visibility...")
-        
         # 1. Create Challenge + Goal (Shared)
         c_id = self.create_challenge_api(f"Shared Streak Test {int(time.time())}", days_offset=30)
         g_shared_title = f"Shared Goal {int(time.time())}"
@@ -235,19 +195,16 @@ class BugFixesTestCase(unittest.TestCase):
         self.create_goal_api(g_personal_title)
         
         # 3. Visit Dashboard
-        self.driver.get(f"{BASE_URL}/dashboard.php")
+        self.driver.get(self.get_url("dashboard.php"))
         
         # 4. Check Shared Goal -> NO Streak Badge
         shared_card = self.driver.find_element(By.XPATH, f"//h6[contains(text(), '{g_shared_title}')]/ancestor::div[contains(@class, 'card-body')]")
-        # Check for .badge-streak inside this card
         try:
             shared_card.find_element(By.CLASS_NAME, "badge-streak")
             found_streak_shared = True
         except:
             found_streak_shared = False
-            
-        print(f"  Shared Goal Streak Badge Found: {found_streak_shared}")
-        self.assertFalse(found_streak_shared, "Streak badge should NOT appear on shared goal")
+        self.assertFalse(found_streak_shared)
         
         # 5. Check Personal Goal -> YES Streak Badge
         personal_card = self.driver.find_element(By.XPATH, f"//h6[contains(text(), '{g_personal_title}')]/ancestor::div[contains(@class, 'card-body')]")
@@ -256,9 +213,4 @@ class BugFixesTestCase(unittest.TestCase):
             found_streak_personal = True
         except:
             found_streak_personal = False
-            
-        print(f"  Personal Goal Streak Badge Found: {found_streak_personal}")
-        self.assertTrue(found_streak_personal, "Streak badge SHOULD appear on personal goal")
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assertTrue(found_streak_personal)
