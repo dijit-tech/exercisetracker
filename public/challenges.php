@@ -9,6 +9,9 @@ require_once 'includes/goals.php';
 
 requireLogin();
 
+// Maintenance: Update status of expired challenges
+updateExpiredChallenges();
+
 $userId = $_SESSION['user_id'];
 $username = $_SESSION['username'];
 $isAdmin = isset($_SESSION['is_admin']) ? $_SESSION['is_admin'] : false;

@@ -429,7 +429,7 @@ function getTotalCompletedDays($goalId) {
 function getSuccessRate($goalId, $days = 7) {
     $db = getDbConnection();
     
-    $startDate = date('Y-m-d', strtotime("-{$days} days"));
+    $startDate = date('Y-m-d', strtotime("-" . ($days - 1) . " days"));
     $endDate = date('Y-m-d');
     
     // Get goal start date
@@ -489,7 +489,7 @@ function getGoalStats($userId) {
     $completedToday = (int)$stmt->fetch(PDO::FETCH_ASSOC)['completed'];
     
     // Success rate (last 7 days)
-    $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
+    $sevenDaysAgo = date('Y-m-d', strtotime('-6 days'));
     $stmt = $db->prepare("SELECT COUNT(DISTINCT DATE(log_date)) as days_with_activity, SUM(CASE WHEN completed = TRUE THEN 1 ELSE 0 END) as total_completions FROM goal_logs gl JOIN goals g ON gl.goal_id = g.id WHERE gl.user_id = ? AND gl.log_date BETWEEN ? AND ? AND g.status = 'active'");
     $stmt->execute([$userId, $sevenDaysAgo, $today]);
     $weekStats = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -716,9 +716,18 @@ function getGoalsWithStatsGroupedByRoom($userId) {
         $goal['completed_today'] = $todayLog && $todayLog['completed'];
         
         // Calculate days remaining
-        if ($goal['end_date']) {
-            $now = new DateTime();
-            $endDate = new DateTime($goal['end_date']);
+        $targetEndDate = $goal['end_date'];
+        if ($roomId > 0 && !empty($goal['room_end_date'])) {
+            $targetEndDate = $goal['room_end_date'];
+        }
+
+        if ($targetEndDate) {
+            $now = new DateTime(); // Current time
+            $endDate = new DateTime($targetEndDate);
+            // Set end date to end of day to include today in calculations if needed, 
+            // but standard diff for days remaining usually matches expectations for "days until".
+            // If today is 9th and end is 10th, diff is 1 day.
+            
             $diff = $now->diff($endDate);
             $goal['days_remaining'] = $diff->invert ? 0 : $diff->days;
         } else {

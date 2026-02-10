@@ -121,6 +121,24 @@ function changeChallengeStatus($challengeId, $status) {
 }
 
 /**
+ * Update expired challenges to archived status
+ */
+function updateExpiredChallenges() {
+    $db = getDbConnection();
+    $today = date('Y-m-d');
+    
+    // Archive active challenges that have ended
+    $stmt = $db->prepare("
+        UPDATE challenges 
+        SET status = 'archived' 
+        WHERE status = 'active' 
+          AND end_date IS NOT NULL 
+          AND end_date < ?
+    ");
+    $stmt->execute([$today]);
+}
+
+/**
  * Delete challenge permanently
  * @param int $challengeId
  * @return bool Success

@@ -450,6 +450,7 @@ unset($group);
                                                     <span class="category-badge"><?= htmlspecialchars($goal['goal_category']) ?></span>
                                                     
                                                     <div class="mt-3">
+                                                        <?php if (empty($roomGroup['room_id'])): // Hide streaks in shared challenges ?>
                                                         <div class="d-flex justify-content-between mb-2">
                                                             <span class="badge badge-streak">
                                                                 <i class="bi bi-fire"></i> <?= $goal['current_streak'] ?> day streak
@@ -458,6 +459,7 @@ unset($group);
                                                                 <i class="bi bi-trophy"></i> Best: <?= $goal['longest_streak'] ?> days
                                                             </span>
                                                         </div>
+                                                        <?php endif; ?>
                                                         
                                                         <div class="progress mb-2" style="height: 20px;">
                                                             <div class="progress-bar" role="progressbar" 
