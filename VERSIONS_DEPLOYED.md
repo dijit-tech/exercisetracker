@@ -6,3 +6,5 @@
 | 2026-01-25 | 957e697 | Fix: Use PdoSqlite3Wrapper to support Guest Mode on hosting without pdo_sqlite | goaltrackerV2 (FTP) |
 | 2026-01-25 | 0f90de2 | Fix getAttribute crash in Challenges logic for Wrapper | goaltrackerV2 (FTP) |
 | 2026-01-25 | PENDING | Fix 500 errors in Guest Mode (challenges & goals) due to getAttribute/Wrapper compatibility logic | goaltrackerV2 (FTP) |
+| 2026-02-09 | 788fc99 | Fix bugs: Challenge end date, Success rate calculation, Dashboard streaks, Days remaining display | goaltrackerV2 (FTP) |
+| 2026-02-09 | f430067 | Fix: Restrict month navigation for archived challenges | goaltrackerV2 (FTP) |
