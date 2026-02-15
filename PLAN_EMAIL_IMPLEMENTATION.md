@@ -4,27 +4,24 @@
 The goal is to add transactional email capability to Goal Tracker to support user engagement features like challenge invites, goal reminders, and streak notifications.
 
 ## 2. Technical Approach
-We will use PHP's native `mail()` function solely for the MVP phase, with an architecture that allows easily swapping in a robust SMTP library (like PHPMailer or Symfony Mailer) later.
+We are using **Microsoft Graph API** for secure, authenticated email delivery (replacing the original plan for `mail()`). Secure credentials (Client ID, Secret, Tenant ID) are stored in `config.php`.
 
 ## 3. Implementation Steps
 
-### Phase 1: Core Mail Infrastructure
-1.  **Create `public/includes/mail.php`**
-    *   Define a wrapper function `sendEmail($to, $subject, $htmlBody)`.
-    *   Configure default headers (From, Reply-To, Content-Type: HTML).
-    *   Handle centralized "From" address configuration.
+### Phase 1: Core Mail Infrastructure (Completed)
+1.  **Create `public/includes/mail.php`** - *Done*
+    *   Implemented `sendEmail($to, $subject, $htmlBody)` using MS Graph API `users/{id}/sendMail`.
+    *   Added `getGraphAccessToken()` with session caching.
 
-2.  **Configuration Update**
-    *   Add `MAIL_FROM_ADDRESS` and `MAIL_FROM_NAME` to `config.php`.
-    *   Ensure production config (`config_prod.php`) has valid sender details to avoid spam filters.
+2.  **Configuration Update** - *Done*
+    *   Added `MAIL_TENANT_ID`, `MAIL_CLIENT_ID`, `MAIL_CLIENT_SECRET`, `MAIL_FROM_ADDRESS` to `config.php` and `config_prod.php`.
 
-### Phase 2: Challenge Invites (High Priority)
-1.  **Update `createChallengeInvite` in `includes/challenges.php`**
+### Phase 2: Challenge Invites (Completed)
+1.  **Update `createChallengeInvite` in `includes/challenges.php`** - *Done*
     *   Trigger `sendEmail` upon successful database insertion of an invite.
-    *   Generate a secure link: `https://goaltracker.../challenges.php?action=accept&invite_code=...`.
-2.  **Email Template**
-    *   Design a simple HTML template for invites.
-    *   Include: Inviter Name, Challenge Name, "Join Now" button.
+2.  **Email Template** - *Done*
+    *   HTML template implemented directly in the function with "Join Now" button.
+
 
 ### Phase 3: Notifications (Future)
 1.  **Streak Reminders**: Cron job to check users who haven't logged today.

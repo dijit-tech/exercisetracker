@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/mail.php'; // Email functionality
 
 // ============================================
 // CHALLENGE CRUD OPERATIONS
@@ -472,7 +473,41 @@ function createChallengeInvite($challengeId, $inviterUserId, $inviteeEmail) {
     
     $stmt->execute([$challengeId, $inviterUserId, $inviteeEmail, $inviteeUserId]);
     
-    return $stmt->rowCount() > 0 ? $db->lastInsertId() : false;
+    if ($stmt->rowCount() > 0) {
+        $inviteId = $db->lastInsertId();
+        
+        // Send Email Notification
+        $stmtDetails = $db->prepare("SELECT username FROM users WHERE id = ?");
+        $stmtDetails->execute([$inviterUserId]);
+        $inviterName = $stmtDetails->fetchColumn() ?: 'A user';
+
+        $stmtDetails = $db->prepare("SELECT name FROM challenges WHERE id = ?");
+        $stmtDetails->execute([$challengeId]);
+        $challengeName = $stmtDetails->fetchColumn() ?: 'a challenge';
+        
+        $appUrl = defined('APP_URL') ? APP_URL : 'https://goaltrackerbeta.dijit.tech';
+        $link = $appUrl . '/challenges.php';
+        
+        $subject = "$inviterName invited you to '$challengeName' on Goal Tracker";
+        
+        $body = "
+        <div style='font-family: Arial, sans-serif; padding: 20px; color: #333;'>
+            <h2 style='color: #667eea;'>You've been invited!</h2>
+            <p><strong>$inviterName</strong> has invited you to join the challenge <strong>$challengeName</strong>.</p>
+            <p>Track your goals, compete on the leaderboard, and stay motivated!</p>
+            <div style='margin: 30px 0;'>
+                <a href='$link' style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Accept Invitation</a>
+            </div>
+            <p style='font-size: 0.9em; color: #666;'>If you don't have an account yet, you can create one using this email address to see your invite.</p>
+        </div>
+        ";
+        
+        sendEmail($inviteeEmail, $subject, $body);
+        
+        return $inviteId;
+    }
+    
+    return false;
 }
 
 /**

@@ -8,3 +8,6 @@
 | 2026-01-25 | PENDING | Fix 500 errors in Guest Mode (challenges & goals) due to getAttribute/Wrapper compatibility logic | goaltrackerV2 (FTP) |
 | 2026-02-09 | 788fc99 | Fix bugs: Challenge end date, Success rate calculation, Dashboard streaks, Days remaining display | goaltrackerV2 (FTP) |
 | 2026-02-09 | f430067 | Fix: Restrict month navigation for archived challenges | goaltrackerV2 (FTP) |
+| 2026-02-09 | 250ff37 | Feature: Email notifications via MS Graph (Invites, config update) | goaltrackerV2 (FTP) |
+| 2026-02-09 | 50ecc0a | Config: Update MS Graph Credentials and Fix From Address Typo | goaltrackerV2 (FTP) |
+
