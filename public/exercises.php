@@ -72,6 +72,9 @@ $success = $_GET['success'] ?? '';
                         <span class="nav-link">Welcome, <?= htmlspecialchars($username) ?>!</span>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="/settings.php">Settings</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/api/logout.php">Logout</a>
                     </li>
                 </ul>

@@ -149,7 +149,7 @@ function destroySession() {
 /**
  * Set user session data after successful login
  */
-function setUserSession($userId, $username, $email, $isAdmin = false) {
+function setUserSession($userId, $username, $email, $isAdmin = false, $preferences = null) {
     startSession();
     
     // Set session data
@@ -157,6 +157,7 @@ function setUserSession($userId, $username, $email, $isAdmin = false) {
     $_SESSION['username'] = $username;
     $_SESSION['email'] = $email;
     $_SESSION['is_admin'] = $isAdmin;
+    $_SESSION['preferences'] = $preferences;
     $_SESSION['created'] = time();
     $_SESSION['last_activity'] = time();
 }

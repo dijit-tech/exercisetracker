@@ -273,7 +273,7 @@ unset($group);
         }
     </style>
 </head>
-<body>
+<body data-track-event="dashboard_view">
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
@@ -307,6 +307,9 @@ unset($group);
                     <?php endif; ?>
                     <li class="nav-item">
                         <span class="nav-link">Welcome, <?= htmlspecialchars($username) ?>!</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/settings.php">Settings</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/api/logout.php">Logout</a>
@@ -597,7 +600,10 @@ unset($group);
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/tracker.js"></script>
     <script>
+        const userPreferences = <?= json_encode($_SESSION['preferences'] ?? null) ?>;
+
         // Show details for a specific day block
         function showDayDetails(element) {
             const date = element.dataset.date;

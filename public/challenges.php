@@ -87,6 +87,9 @@ $pageTitle = "My Challenges";
                     </li>
                     <?php endif; ?>
                     <li class="nav-item">
+                        <a class="nav-link" href="/settings.php">Settings</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/api/logout.php">Logout (<?php echo htmlspecialchars($username); ?>)</a>
                     </li>
                 </ul>

@@ -14,7 +14,7 @@ function authenticateUser($username, $password) {
     $pdo = getDbConnection();
     
     $stmt = $pdo->prepare("
-        SELECT id, username, email, password_hash, is_admin 
+        SELECT id, username, email, password_hash, is_admin, preferences 
         FROM users 
         WHERE username = ? OR email = ?
     ");

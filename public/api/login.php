@@ -44,7 +44,8 @@ setUserSession(
     $user['id'],
     $user['username'],
     $user['email'],
-    (bool)$user['is_admin']
+    (bool)$user['is_admin'],
+    $user['preferences'] ?? null
 );
 
 // Clear output buffer and redirect to dashboard
